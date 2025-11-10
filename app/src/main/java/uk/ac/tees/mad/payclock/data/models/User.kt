@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.data
+package uk.ac.tees.mad.payclock.data.models
 
 /**
  * Represents a user object received from the Django REST Framework backend.
@@ -39,5 +39,16 @@ data class User(
      */
     val lastName: String?,
 
-    )
-
+    ) {
+    companion object {
+        fun create(
+            id: Int,
+            username: String,
+            email: String,
+            firstName: String?,
+            lastName: String?,
+        ): User {
+            return User(id, username, email, firstName, lastName)
+        }
+    }
+}

@@ -11,38 +11,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import uk.ac.tees.mad.payclock.data.Job
+import uk.ac.tees.mad.payclock.data.models.Job
 import uk.ac.tees.mad.payclock.viewmodel.JobViewModel
-import kotlin.random.Random
 
 /**
  * Stateful composable that provides the data and logic to the JobScreen.
@@ -56,8 +36,7 @@ fun JobScreenRoute(
     JobScreen(
         jobs = jobs,
         onAddJob = { jobViewModel.addJob(it) },
-        onRemoveJob = { jobViewModel.removeJob(it) },
-        navController = navController
+        onRemoveJob = { jobViewModel.removeJob(it) }
     )
 }
 
@@ -67,21 +46,11 @@ fun JobScreenRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobScreen(
-    navController: NavController,
     jobs: List<Job>,
     onAddJob: (Job) -> Unit,
     onRemoveJob: (Job) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    if (showDialog) {
-        AddJobDialog(
-            onDismiss = { showDialog = false },
-            onJobAdd = {
-                onAddJob(it) // ERROR: 'it' is not defined here
-                showDialog = false
-            }
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -99,27 +68,25 @@ fun JobScreen(
             }
         }
     ) { padding ->
-        Column(
+        if (showDialog) {
+            AddJobDialog(
+                onDismiss = { showDialog = false },
+                onJobAdd = {
+                    onAddJob(it)
+                    showDialog = false
+                }
+            )
+        }
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (showDialog) {
-                AddJobDialog(
-                    onDismiss = { showDialog = false },
-                    onJobAdd = {
-                        onAddJob(it)
-                        showDialog = false
-                    }
+            items(jobs) { job ->
+                JobItem(
+                    job = job,
+                    onDelete = { onRemoveJob(job) } // Simplified callback
                 )
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = padding
-            ) {
-                items(jobs) { job ->
-                    JobItem(job = job, onDelete = { onRemoveJob(it) })
-                }
             }
         }
     }
@@ -128,7 +95,7 @@ fun JobScreen(
 @Composable
 fun JobItem(
     job: Job,
-    onDelete: (Job) -> Unit
+    onDelete: () -> Unit // Simplified signature
 ) {
     Card(
         modifier = Modifier
@@ -147,7 +114,7 @@ fun JobItem(
                 Text(text = job.name, fontWeight = FontWeight.Bold)
                 Text(text = "£${job.hourlyRate}/hr")
             }
-            IconButton(onClick = { onDelete(job) }) {
+            IconButton(onClick = onDelete) { // Simplified call
                 Icon(Icons.Default.Delete, contentDescription = "Delete Job")
             }
         }
@@ -190,8 +157,8 @@ fun AddJobDialog(
                 onClick = {
                     val rate = hourlyRate.toDoubleOrNull() ?: 0.0
                     val breakMinutes = breakTime.toIntOrNull() ?: 0
+                    // Use the correct constructor for the Room entity
                     val newJob = Job(
-                        id = Random.nextInt(), // Temporary unique ID
                         name = name,
                         hourlyRate = rate,
                         breakTimeInMinutes = breakMinutes
@@ -213,18 +180,15 @@ fun AddJobDialog(
 @Preview(showBackground = true)
 @Composable
 fun JobScreenPreview() {
-    val navController = rememberNavController()
     val sampleJobs = listOf(
-        Job(1, "Android Developer", 25.50, 30),
-        Job(2, "UX Designer", 30.0, 60),
-        Job(3, "Project Manager", 45.25, 30)
+        Job(id = 1, name = "Android Developer", hourlyRate = 25.50, breakTimeInMinutes = 30),
+        Job(id = 2, name = "UX Designer", hourlyRate = 30.0, breakTimeInMinutes = 60),
+        Job(id = 3, name = "Project Manager", hourlyRate = 45.25, breakTimeInMinutes = 30)
     )
 
-    // Preview the stateless screen with fake data and empty actions.
     JobScreen(
         jobs = sampleJobs,
         onAddJob = {},
-        onRemoveJob = {},
-        navController = navController
+        onRemoveJob = {}
     )
 }

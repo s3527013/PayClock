@@ -3,7 +3,9 @@ package uk.ac.tees.mad.payclock.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import uk.ac.tees.mad.payclock.data.User
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import uk.ac.tees.mad.payclock.data.models.User
 
 /**
  * ViewModel responsible for managing the state of a single User object.

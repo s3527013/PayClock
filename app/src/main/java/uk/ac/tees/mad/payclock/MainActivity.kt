@@ -8,18 +8,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import uk.ac.tees.mad.payclock.screens.AddJobScreen
-import uk.ac.tees.mad.payclock.screens.JobScreen
+import uk.ac.tees.mad.payclock.screens.ForgotPasswordScreen
+import uk.ac.tees.mad.payclock.screens.JobScreenRoute
+import uk.ac.tees.mad.payclock.screens.LoginScreen
+import uk.ac.tees.mad.payclock.screens.SignUpScreen
+import uk.ac.tees.mad.payclock.screens.SplashScreen
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
-import uk.ac.tees.mad.payclock.viewmodel.JobViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,32 +34,27 @@ class MainActivity : ComponentActivity() {
 fun PayClockApp() {
     PayClockTheme {
         val navController = rememberNavController()
-        // Instantiate the ViewModel
-        val jobViewModel: JobViewModel = viewModel()
-        // Collect the list of jobs as state
-        val jobs by jobViewModel.jobs.collectAsState()
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = "jobs",
+                startDestination = "splash", // The app now starts at the splash screen
                 modifier = Modifier.padding(innerPadding)
             ) {
+                composable(route = "splash") {
+                    SplashScreen(navController = navController)
+                }
+                composable(route = "login") {
+                    LoginScreen(navController = navController)
+                }
+                composable(route = "signup") {
+                    SignUpScreen(navController = navController)
+                }
+                composable(route = "forgot_password") {
+                    ForgotPasswordScreen(navController = navController)
+                }
                 composable(route = "jobs") {
-                    JobScreen(
-                        navController = navController,
-                        jobs = jobs, // Pass the state from the ViewModel
-                        onAddJob = {
-//                            navController.navigate("addJobScreen")
-                        },
-                        onRemoveJob = { job -> jobViewModel.removeJob(job) }
-                    )
+                    JobScreenRoute(navController = navController)
                 }
-                composable(route = "addJobScreen") {
-                    AddJobScreen(navController = navController, jobViewModel)
-                }
-                // You can add other screens to your navigation graph here
-                // composable(route = "landing") { ... }
-                // composable(route = "graph") { ... }
             }
         }
     }
