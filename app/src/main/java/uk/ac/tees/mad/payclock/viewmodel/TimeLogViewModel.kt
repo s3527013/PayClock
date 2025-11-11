@@ -10,45 +10,54 @@ import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.data.db.PayClockDatabase
 import uk.ac.tees.mad.payclock.data.models.TimeLog
 import uk.ac.tees.mad.payclock.data.models.TimeLogWithJob
+import uk.ac.tees.mad.payclock.data.repository.AuthRepository
 import uk.ac.tees.mad.payclock.data.repository.TimeLogRepository
 import java.time.Duration
 import java.time.Instant
 
 class TimeLogViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: TimeLogRepository
+    private val timeLogRepository: TimeLogRepository
+    private val authRepository = AuthRepository() // To get the current user
 
     val allTimeLogs: StateFlow<List<TimeLogWithJob>>
     val activeTimeLog: StateFlow<TimeLogWithJob?>
 
     init {
         val timeLogDao = PayClockDatabase.getDatabase(application).timeLogDao()
-        repository = TimeLogRepository(timeLogDao)
+        timeLogRepository = TimeLogRepository(timeLogDao)
 
-        allTimeLogs = repository.allTimeLogsWithJob.stateIn(
+        allTimeLogs = timeLogRepository.allTimeLogsWithJob.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-        activeTimeLog = repository.activeTimeLogWithJob.stateIn(
+        activeTimeLog = timeLogRepository.activeTimeLogWithJob.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubributed(5000),
+            started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
     }
 
-    fun startNewShift(jobId: Int) {
+    fun startNewShift(jobId: String) {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            // Should not happen if this screen is protected by auth
+            return
+        }
+
         viewModelScope.launch {
             if (activeTimeLog.value == null) {
                 val newLog = TimeLog(
+                    userId = userId,
                     startTime = Instant.now(),
                     endTime = null,
                     jobId = jobId,
                     workBreak = emptyList(),
                     duration = null
                 )
-                repository.insert(newLog)
+                timeLogRepository.insert(newLog)
             }
         }
     }
@@ -62,14 +71,14 @@ class TimeLogViewModel(application: Application) : AndroidViewModel(application)
                     endTime = now,
                     duration = duration
                 )
-                repository.update(updatedLog)
+                timeLogRepository.update(updatedLog)
             }
         }
     }
 
     fun deleteTimeLog(timeLog: TimeLog) {
         viewModelScope.launch {
-            repository.delete(timeLog)
+            timeLogRepository.delete(timeLog)
         }
     }
 }

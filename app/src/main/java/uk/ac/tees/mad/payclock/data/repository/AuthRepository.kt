@@ -1,56 +1,66 @@
 package uk.ac.tees.mad.payclock.data.repository
 
-import android.content.Context
-import kotlinx.coroutines.delay
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
+import kotlinx.coroutines.tasks.await
 
 /**
- * Repository for handling authentication and persisting the user's login state.
+ * Repository for handling authentication with Firebase.
  */
-class AuthRepository(context: Context) {
+class AuthRepository {
 
-    private val sharedPreferences = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-
-    private companion object {
-        const val AUTH_TOKEN_KEY = "auth_token"
-    }
+    private val firebaseAuth: FirebaseAuth = Firebase.auth
 
     /**
-     * Simulates a login request to a backend.
-     *
-     * @param email The user's email.
-     * @param password The user's password.
-     * @return A [Result] indicating success with a token or failure with an exception.
+     * Signs in a user with email and password.
      */
     suspend fun login(email: String, password: String): Result<String> {
-        delay(1500) // Simulate network latency
-        // In a real app, you would make a network request here.
-        return if (email.isNotBlank() && password == "password") { // Use "password" to test success
-            val fakeToken = "fake-jwt-token-for-$email"
-            saveAuthToken(fakeToken)
-            Result.success(fakeToken)
-        } else {
-            Result.failure(Exception("Invalid email or password"))
+        return try {
+            val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val user = result.user
+            Result.success(user?.uid ?: "")
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     /**
-     * Saves the authentication token to SharedPreferences.
+     * Creates a new user with email and password.
      */
-    fun saveAuthToken(token: String) {
-        sharedPreferences.edit().putString(AUTH_TOKEN_KEY, token).apply()
+    suspend fun signUp(email: String, password: String): Result<String> {
+        return try {
+            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val user = result.user
+            Result.success(user?.uid ?: "")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
-     * Retrieves the authentication token from SharedPreferences.
+     * Sends a password reset email.
      */
-    fun getAuthToken(): String? {
-        return sharedPreferences.getString(AUTH_TOKEN_KEY, null)
+    suspend fun sendPasswordReset(email: String): Result<Unit> {
+        return try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
-     * Clears the authentication token, effectively logging the user out.
+     * Signs out the current user.
      */
-    fun clearAuthToken() {
-        sharedPreferences.edit().remove(AUTH_TOKEN_KEY).apply()
+    fun logout() {
+        firebaseAuth.signOut()
+    }
+
+    /**
+     * Gets the current user's ID, or null if not logged in.
+     */
+    fun getCurrentUserId(): String? {
+        return firebaseAuth.currentUser?.uid
     }
 }

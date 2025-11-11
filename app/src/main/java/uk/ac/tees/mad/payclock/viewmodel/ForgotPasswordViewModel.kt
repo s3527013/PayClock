@@ -1,8 +1,8 @@
 package uk.ac.tees.mad.payclock.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,9 +16,9 @@ sealed class ForgotPasswordState {
     data class Error(val message: String) : ForgotPasswordState()
 }
 
-class ForgotPasswordViewModel(application: Application) : AndroidViewModel(application) {
+class ForgotPasswordViewModel : ViewModel() {
 
-    private val authRepository = AuthRepository(application)
+    private val authRepository = AuthRepository()
 
     private val _state = MutableStateFlow<ForgotPasswordState>(ForgotPasswordState.Idle)
     val state: StateFlow<ForgotPasswordState> = _state.asStateFlow()

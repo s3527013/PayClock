@@ -3,6 +3,8 @@ package uk.ac.tees.mad.payclock.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -11,23 +13,14 @@ import uk.ac.tees.mad.payclock.data.db.PayClockDatabase
 import uk.ac.tees.mad.payclock.data.models.Job
 import uk.ac.tees.mad.payclock.data.repository.JobRepository
 
-/**
- * ViewModel for managing the list of jobs, now backed by a Room database.
- */
 class JobViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: JobRepository
-
-    // Using StateFlow to expose the list of jobs from the database.
-    // The UI will automatically update when the data changes.
     val jobs: StateFlow<List<Job>>
 
     init {
-        // Initialize the database and repository.
         val jobDao = PayClockDatabase.getDatabase(application).jobDao()
         repository = JobRepository(jobDao)
-        
-        // Convert the Flow from the repository into a StateFlow for the UI.
         jobs = repository.allJobs.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -36,19 +29,28 @@ class JobViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Launches a coroutine to insert a new job into the database.
-     * @param job The new job to add.
+     * Creates a new Job, automatically associating it with the current user.
      */
-    fun addJob(job: Job) {
+    fun addJob(name: String, hourlyRate: Double, breakTimeInMinutes: Int) {
+        // Get the current user's ID from Firebase Auth.
+        val userId = Firebase.auth.currentUser?.uid
+        if (userId == null) {
+            // Handle the case where the user is not logged in, though this shouldn't happen
+            // if the screen is protected by the auth flow.
+            return
+        }
         viewModelScope.launch {
-            repository.insert(job)
+            val newJob = Job(
+                userId = userId,
+                name = name,
+                hourlyRate = hourlyRate,
+                breakTimeInMinutes = breakTimeInMinutes,
+                isPendingSync = true // Mark for upload
+            )
+            repository.insert(newJob)
         }
     }
 
-    /**
-     * Launches a coroutine to remove a job from the database.
-     * @param job The job to remove.
-     */
     fun removeJob(job: Job) {
         viewModelScope.launch {
             repository.delete(job)

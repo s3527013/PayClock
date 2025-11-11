@@ -30,8 +30,7 @@ abstract class PayClockDatabase : RoomDatabase() {
                     "payclock_database"
                 )
                 // Wipes and rebuilds instead of migrating if no Migration object.
-                // Migration is not part of this example.
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true) // Updated to the non-deprecated version
                 .build()
                 INSTANCE = instance
                 instance

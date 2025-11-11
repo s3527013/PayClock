@@ -18,6 +18,7 @@ import uk.ac.tees.mad.payclock.screens.JobScreenRoute
 import uk.ac.tees.mad.payclock.screens.LoginScreen
 import uk.ac.tees.mad.payclock.screens.SignUpScreen
 import uk.ac.tees.mad.payclock.screens.SplashScreen
+import uk.ac.tees.mad.payclock.screens.TimeLogScreenRoute
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
 
 class MainActivity : ComponentActivity() {
@@ -54,6 +55,9 @@ fun PayClockApp() {
                 }
                 composable(route = "jobs") {
                     JobScreenRoute(navController = navController)
+                }
+                composable(route = "time_log") {
+                    TimeLogScreenRoute(navController = navController)
                 }
             }
         }

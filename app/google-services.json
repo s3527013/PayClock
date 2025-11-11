@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "741945802727",
+    "project_id": "payclock-30a7b",
+    "storage_bucket": "payclock-30a7b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741945802727:android:692643752c94ea3d528742",
+        "android_client_info": {
+          "package_name": "uk.ac.tees.mad.payclock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1uArW5rxgDMmTg0GWM_Kcbh0RcXEJE3g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

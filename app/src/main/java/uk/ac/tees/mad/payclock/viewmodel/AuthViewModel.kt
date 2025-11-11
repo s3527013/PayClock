@@ -1,41 +1,29 @@
 package uk.ac.tees.mad.payclock.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.ViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import uk.ac.tees.mad.payclock.data.repository.AuthRepository
 
 sealed class AuthState {
-    object Unknown : AuthState() // Initial state, we don't know if the user is logged in
+    object Unknown : AuthState()
     object Authenticated : AuthState()
     object Unauthenticated : AuthState()
 }
 
-/**
- * A global ViewModel to manage the overall authentication state of the app.
- */
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
+class AuthViewModel : ViewModel() {
 
-    private val authRepository = AuthRepository(application)
+    private val firebaseAuth: FirebaseAuth = Firebase.auth
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unknown)
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    val authState: StateFlow<AuthState> = _authState
 
     init {
-        checkAuthStatus()
-    }
-
-    /**
-     * Checks SharedPreferences for a valid token to determine the initial auth state.
-     */
-    private fun checkAuthStatus() {
-        viewModelScope.launch {
-            val token = authRepository.getAuthToken()
-            if (token != null) {
+        // Listen to Firebase a/uth state changes
+        firebaseAuth.addAuthStateListener { auth ->
+            if (auth.currentUser != null) {
                 _authState.value = AuthState.Authenticated
             } else {
                 _authState.value = AuthState.Unauthenticated
@@ -43,13 +31,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Clears the auth token and updates the state to Unauthenticated.
-     */
     fun logout() {
-        viewModelScope.launch {
-            authRepository.clearAuthToken()
-            _authState.value = AuthState.Unauthenticated
-        }
+        firebaseAuth.signOut()
     }
 }

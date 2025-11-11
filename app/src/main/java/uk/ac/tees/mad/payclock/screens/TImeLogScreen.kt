@@ -42,7 +42,7 @@ fun TimeLogScreenRoute(
     TimeLogScreen(
         timeLogs = allTimeLogs,
         activeLog = activeTimeLog,
-        onStartTimeLog = { jobId -> timeLogViewModel.startNewShift(jobId) },
+        onStartTimeLog = { jobId -> timeLogViewModel.startNewShift(jobId) }, // The ViewModel now handles the user ID
         onEndTimeLog = { timeLogViewModel.endCurrentShift() },
         onDeleteTimeLog = { log -> timeLogViewModel.deleteTimeLog(log) },
         navController = navController
@@ -54,7 +54,7 @@ fun TimeLogScreenRoute(
 fun TimeLogScreen(
     timeLogs: List<TimeLogWithJob>,
     activeLog: TimeLogWithJob?,
-    onStartTimeLog: (Int) -> Unit,
+    onStartTimeLog: (String) -> Unit,
     onEndTimeLog: () -> Unit,
     onDeleteTimeLog: (TimeLog) -> Unit,
     navController: NavHostController,
@@ -72,7 +72,7 @@ fun TimeLogScreen(
             )
         },
         floatingActionButton = {
-            if (activeLog == null) { // Only show FAB if no shift is active
+            if (activeLog == null) {
                 FloatingActionButton(onClick = { showDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Start New Shift")
                 }
@@ -161,7 +161,7 @@ fun formatDuration(duration: Duration): String {
 }
 
 @Composable
-fun AddTimeLogDialog(onDismiss: () -> Unit, onTimeLogAdd: (Int) -> Unit) {
+fun AddTimeLogDialog(onDismiss: () -> Unit, onTimeLogAdd: (String) -> Unit) {
     var jobId by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -172,17 +172,13 @@ fun AddTimeLogDialog(onDismiss: () -> Unit, onTimeLogAdd: (Int) -> Unit) {
                 value = jobId,
                 onValueChange = { jobId = it },
                 label = { Text("Enter Job ID") },
-                placeholder = { Text("e.g., 1") }
+                placeholder = { Text("e.g., a-b-c-d") }
             )
         },
         confirmButton = {
             Button(
-                onClick = {
-                    jobId.toIntOrNull()?.let { id ->
-                        onTimeLogAdd(id)
-                    }
-                },
-                enabled = jobId.toIntOrNull() != null
+                onClick = { onTimeLogAdd(jobId) },
+                enabled = jobId.isNotBlank()
             ) {
                 Text("Start")
             }
@@ -202,23 +198,25 @@ fun TimeLogScreenPreview() {
     val sampleLogs = listOf(
         TimeLogWithJob(
             timeLog = TimeLog(
-                id = 1,
+                id = "1",
                 startTime = Instant.now().minusSeconds(7200),
                 endTime = Instant.now().minusSeconds(3600),
-                jobId = 1,
+                jobId = "1",
                 workBreak = emptyList(),
-                duration = Duration.ofHours(1)
+                duration = Duration.ofHours(1),
+                userId = "1"
             ),
             jobName = "Android Developer"
         ),
         TimeLogWithJob(
             timeLog = TimeLog(
-                id = 2,
+                id = "2",
                 startTime = Instant.now(),
                 endTime = null,
-                jobId = 2,
+                jobId = "2",
                 workBreak = emptyList(),
-                duration = null
+                duration = null,
+                userId = "1"
             ),
             jobName = "UX Designer"
         )

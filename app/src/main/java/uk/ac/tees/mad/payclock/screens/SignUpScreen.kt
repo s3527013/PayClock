@@ -28,7 +28,6 @@ fun SignUpScreen(
     navController: NavHostController,
     signUpViewModel: SignUpViewModel = viewModel()
 ) {
-    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -42,10 +41,12 @@ fun SignUpScreen(
                 navController.navigate("jobs") { popUpTo("login") { inclusive = true } }
                 signUpViewModel.resetState()
             }
+
             is SignUpState.Error -> {
                 Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
                 signUpViewModel.resetState()
             }
+
             else -> Unit
         }
     }
@@ -59,15 +60,6 @@ fun SignUpScreen(
     ) {
         Text("Create an Account", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = state !is SignUpState.Loading
-        )
-        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = email,
@@ -100,12 +92,15 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { signUpViewModel.signUp(email, password, username) },
+            onClick = { signUpViewModel.signUp(email, password) },
             modifier = Modifier.fillMaxWidth(),
             enabled = state !is SignUpState.Loading && password == confirmPassword
         ) {
             if (state is SignUpState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                CircularProgressIndicator(
+                    modifier = Modifier.height(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             } else {
                 Text("Sign Up")
             }
