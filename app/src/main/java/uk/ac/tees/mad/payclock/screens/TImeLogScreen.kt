@@ -26,10 +26,9 @@ import androidx.navigation.compose.rememberNavController
 import uk.ac.tees.mad.payclock.data.models.TimeLog
 import uk.ac.tees.mad.payclock.data.models.TimeLogWithJob
 import uk.ac.tees.mad.payclock.viewmodel.TimeLogViewModel
-import java.time.Duration
-import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 
 @Composable
 fun TimeLogScreenRoute(
@@ -129,10 +128,10 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = logWithJob.jobName ?: "Unknown Job", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Started: ${formatter.format(log.startTime)}")
+                log.startTime?.let { Text(text = "Started: ${formatter.format(it.toInstant())}") }
 
                 if (log.endTime != null) {
-                    Text(text = "Ended:   ${formatter.format(log.endTime)}")
+                    log.endTime?.let { Text(text = "Ended:   ${formatter.format(it.toInstant())}") }
                     log.duration?.let {
                         Text(text = "Duration: ${formatDuration(it)}")
                     }
@@ -154,9 +153,9 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
     }
 }
 
-fun formatDuration(duration: Duration): String {
-    val hours = duration.toHours()
-    val minutes = duration.toMinutes() % 60
+fun formatDuration(durationInMinutes: Long): String {
+    val hours = durationInMinutes / 60
+    val minutes = durationInMinutes % 60
     return String.format("%d hours, %d minutes", hours, minutes)
 }
 
@@ -199,11 +198,10 @@ fun TimeLogScreenPreview() {
         TimeLogWithJob(
             timeLog = TimeLog(
                 id = "1",
-                startTime = Instant.now().minusSeconds(7200),
-                endTime = Instant.now().minusSeconds(3600),
+                startTime = Date(System.currentTimeMillis() - 7200000),
+                endTime = Date(System.currentTimeMillis() - 3600000),
                 jobId = "1",
-                workBreak = emptyList(),
-                duration = Duration.ofHours(1),
+                duration = 60,
                 userId = "1"
             ),
             jobName = "Android Developer"
@@ -211,10 +209,9 @@ fun TimeLogScreenPreview() {
         TimeLogWithJob(
             timeLog = TimeLog(
                 id = "2",
-                startTime = Instant.now(),
+                startTime = Date(),
                 endTime = null,
                 jobId = "2",
-                workBreak = emptyList(),
                 duration = null,
                 userId = "1"
             ),
