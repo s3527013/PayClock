@@ -2,6 +2,7 @@ package uk.ac.tees.mad.payclock.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -21,7 +22,7 @@ import uk.ac.tees.mad.payclock.data.models.TimeLog
 import uk.ac.tees.mad.payclock.data.models.TimeLogWithJob
 import java.util.Date
 
-class TimeLogViewModel(application: Application) : AndroidViewModel(application) {
+class TimeLogViewModel: ViewModel() {
 
     private val firestore = Firebase.firestore
     private val auth = Firebase.auth

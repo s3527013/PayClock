@@ -16,7 +16,4 @@ data class TimeLog(
     val startTime: Date? = null,
     var endTime: Date? = null,
     var duration: Long? = null, // Duration in minutes
-) {
-    // No-argument constructor for Firestore
-    constructor() : this("", "", "", null, null, null)
-}
+)

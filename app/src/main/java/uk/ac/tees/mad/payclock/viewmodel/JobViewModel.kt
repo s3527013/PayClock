@@ -1,40 +1,50 @@
 package uk.ac.tees.mad.payclock.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
-import com.google.firebase.firestore.snapshots
-import com.google.firebase.firestore.toObjects
-
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.data.models.Job
-import kotlinx.coroutines.flow.map
+import uk.ac.tees.mad.payclock.data.repository.JobRepository
 
-class JobViewModel(application: Application) : AndroidViewModel(application) {
+class JobViewModel : ViewModel() {
 
-    private val firestore = Firebase.firestore
-    private val userId = Firebase.auth.currentUser?.uid
+    private val auth = Firebase.auth
+    private val jobRepository = JobRepository()
 
-    val jobs: StateFlow<List<Job>> = firestore.collection("jobs")
-        .whereEqualTo("userId", userId)
-        .snapshots()
-        .map { snapshot ->
-            snapshot.toObjects<Job>()
+    private val _authState = MutableStateFlow(auth.currentUser)
+    val authState: StateFlow<FirebaseUser?> = _authState
+
+    init {
+        auth.addAuthStateListener { firebaseAuth ->
+            _authState.value = firebaseAuth.currentUser
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val jobs: StateFlow<List<Job>> = authState.flatMapLatest { user ->
+        if (user != null) {
+            jobRepository.getJobs(user.uid)
+        } else {
+            flowOf(emptyList())
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun addJob(name: String, hourlyRate: Double, breakTimeInMinutes: Int) {
-        if (userId == null) return
+        val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             val newJob = Job(
                 userId = userId,
@@ -42,13 +52,19 @@ class JobViewModel(application: Application) : AndroidViewModel(application) {
                 hourlyRate = hourlyRate,
                 breakTimeInMinutes = breakTimeInMinutes
             )
-            firestore.collection("jobs").add(newJob)
+            jobRepository.addJob(newJob)
+        }
+    }
+
+    fun updateJob(job: Job) {
+        viewModelScope.launch {
+            jobRepository.updateJob(job)
         }
     }
 
     fun removeJob(job: Job) {
-        if (job.id.isNotBlank()) {
-            firestore.collection("jobs").document(job.id).delete()
+        viewModelScope.launch {
+            jobRepository.removeJob(job)
         }
     }
 }
