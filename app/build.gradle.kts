@@ -32,8 +32,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
@@ -53,13 +56,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
-    implementation(libs.androidx.room.runtime)
-    // Optional - Kotlin Extensions and Coroutines support for Room
-    implementation(libs.androidx.room.ktx)
-
-    // KSP for Room's annotation processor
-    ksp(libs.androidx.room.compiler)
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -69,20 +65,14 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(libs.androidx.compose.material.icons.extended.android)
 
+    // Import the Firebase BoM
+    implementation(platform(libs.firebase.bom))
 
-    dependencies {
-        // ...
+    // When using the BoM, you don't specify versions in Firebase library dependencies
 
-        // Import the Firebase BoM
-        implementation(platform(libs.firebase.bom))
+    // Add the dependency for the Firebase SDK for Google Analytics
+    implementation(libs.firebase.analytics)
 
-        // When using the BoM, you don't specify versions in Firebase library dependencies
-
-        // Add the dependency for the Firebase SDK for Google Analytics
-        implementation(libs.firebase.analytics)
-
-        implementation(libs.firebase.auth)
-        implementation(libs.firebase.firestore)
-    }
-
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 }

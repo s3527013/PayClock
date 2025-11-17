@@ -13,12 +13,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import uk.ac.tees.mad.payclock.screens.ForgotPasswordScreen
-import uk.ac.tees.mad.payclock.screens.JobScreenRoute
-import uk.ac.tees.mad.payclock.screens.LoginScreen
-import uk.ac.tees.mad.payclock.screens.SignUpScreen
-import uk.ac.tees.mad.payclock.screens.SplashScreen
-import uk.ac.tees.mad.payclock.screens.TimeLogScreenRoute
+import uk.ac.tees.mad.payclock.features.auth.ForgotPasswordScreen
+import uk.ac.tees.mad.payclock.features.jobs.JobScreenRoute
+import uk.ac.tees.mad.payclock.features.auth.LoginScreen
+import uk.ac.tees.mad.payclock.features.auth.SignUpScreen
+import uk.ac.tees.mad.payclock.features.auth.SplashScreen
+import uk.ac.tees.mad.payclock.features.timelog.ActiveTimeLogScreenRoute
+import uk.ac.tees.mad.payclock.features.timelog.TimeLogScreenRoute
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
 
 class MainActivity : ComponentActivity() {
@@ -58,6 +59,9 @@ fun PayClockApp() {
                 }
                 composable(route = "time_log") {
                     TimeLogScreenRoute(navController = navController)
+                }
+                composable(route = "active_time_log") {
+                    ActiveTimeLogScreenRoute(navController = navController)
                 }
             }
         }
