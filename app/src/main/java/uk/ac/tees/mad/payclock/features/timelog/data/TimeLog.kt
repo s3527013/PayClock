@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.data.models
+package uk.ac.tees.mad.payclock.features.timelog.data
 
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp

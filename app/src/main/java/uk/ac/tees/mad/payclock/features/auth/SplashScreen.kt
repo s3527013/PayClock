@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,8 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import uk.ac.tees.mad.payclock.viewmodel.AuthViewModel
-import uk.ac.tees.mad.payclock.viewmodel.AuthState
 
 @Composable
 fun SplashScreen(

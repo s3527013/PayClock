@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.timelog
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,9 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import uk.ac.tees.mad.payclock.data.models.TimeLog
-import uk.ac.tees.mad.payclock.data.models.TimeLogWithJob
-import uk.ac.tees.mad.payclock.viewmodel.TimeLogViewModel
+import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
+import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date

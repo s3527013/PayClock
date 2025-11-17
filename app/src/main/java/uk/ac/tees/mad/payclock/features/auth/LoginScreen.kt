@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -20,34 +20,28 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
-import uk.ac.tees.mad.payclock.viewmodel.SignUpState
-import uk.ac.tees.mad.payclock.viewmodel.SignUpViewModel
 
 @Composable
-fun SignUpScreen(
-    navController: NavHostController,
-    signUpViewModel: SignUpViewModel = viewModel()
-) {
+fun LoginScreen(navController: NavHostController, loginViewModel: LoginViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    val state by signUpViewModel.state.collectAsState()
+    val loginState by loginViewModel.loginState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(state) {
-        when (val currentState = state) {
-            is SignUpState.Success -> {
-                Toast.makeText(context, "Sign-up successful!", Toast.LENGTH_SHORT).show()
-                navController.navigate("jobs") { popUpTo("login") { inclusive = true } }
-                signUpViewModel.resetState()
+    LaunchedEffect(loginState) {
+        when (val state = loginState) {
+            is LoginState.Success -> {
+                Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
+                navController.navigate("jobs") {
+                    popUpTo("login") { inclusive = true }
+                }
+                loginViewModel.resetState() // Reset state after navigation
             }
-
-            is SignUpState.Error -> {
-                Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
-                signUpViewModel.resetState()
+            is LoginState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                loginViewModel.resetState() // Allow user to try again
             }
-
-            else -> Unit
+            else -> Unit // Handle Idle and Loading states if needed
         }
     }
 
@@ -58,7 +52,7 @@ fun SignUpScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Create an Account", style = MaterialTheme.typography.headlineLarge)
+        Text("Welcome Back", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
@@ -66,7 +60,7 @@ fun SignUpScreen(
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            enabled = state !is SignUpState.Loading
+            enabled = loginState !is LoginState.Loading
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -76,50 +70,44 @@ fun SignUpScreen(
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            enabled = state !is SignUpState.Loading
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = { Text("Confirm Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = state !is SignUpState.Loading,
-            isError = password != confirmPassword
+            enabled = loginState !is LoginState.Loading
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { signUpViewModel.signUp(email, password) },
+            onClick = { loginViewModel.login(email, password) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = state !is SignUpState.Loading && password == confirmPassword
+            enabled = loginState !is LoginState.Loading
         ) {
-            if (state is SignUpState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.height(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+            if (loginState is LoginState.Loading) {
+                CircularProgressIndicator(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Sign Up")
+                Text("Login")
             }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = { navController.navigate("forgot_password") },
+            enabled = loginState !is LoginState.Loading
+        ) {
+            Text("Forgot Password?")
         }
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(
-            onClick = { navController.navigate("login") },
-            enabled = state !is SignUpState.Loading
+            onClick = { navController.navigate("signup") },
+            enabled = loginState !is LoginState.Loading
         ) {
-            Text("Already have an account? Login")
+            Text("Don\'t have an account? Sign Up")
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun SignUpScreenPreview() {
+fun LoginScreenPreview() {
     PayClockTheme {
-        SignUpScreen(navController = rememberNavController())
+        LoginScreen(navController = rememberNavController())
     }
 }

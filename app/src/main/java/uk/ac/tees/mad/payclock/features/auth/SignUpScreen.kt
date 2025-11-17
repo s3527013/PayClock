@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -20,30 +20,32 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
-import uk.ac.tees.mad.payclock.viewmodel.LoginState
-import uk.ac.tees.mad.payclock.viewmodel.LoginViewModel
 
 @Composable
-fun LoginScreen(navController: NavHostController, loginViewModel: LoginViewModel = viewModel()) {
+fun SignUpScreen(
+    navController: NavHostController,
+    signUpViewModel: SignUpViewModel = viewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val loginState by loginViewModel.loginState.collectAsState()
+    var confirmPassword by remember { mutableStateOf("") }
+    val state by signUpViewModel.state.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(loginState) {
-        when (val state = loginState) {
-            is LoginState.Success -> {
-                Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
-                navController.navigate("jobs") {
-                    popUpTo("login") { inclusive = true }
-                }
-                loginViewModel.resetState() // Reset state after navigation
+    LaunchedEffect(state) {
+        when (val currentState = state) {
+            is SignUpState.Success -> {
+                Toast.makeText(context, "Sign-up successful!", Toast.LENGTH_SHORT).show()
+                navController.navigate("jobs") { popUpTo("login") { inclusive = true } }
+                signUpViewModel.resetState()
             }
-            is LoginState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                loginViewModel.resetState() // Allow user to try again
+
+            is SignUpState.Error -> {
+                Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
+                signUpViewModel.resetState()
             }
-            else -> Unit // Handle Idle and Loading states if needed
+
+            else -> Unit
         }
     }
 
@@ -54,7 +56,7 @@ fun LoginScreen(navController: NavHostController, loginViewModel: LoginViewModel
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Welcome Back", style = MaterialTheme.typography.headlineLarge)
+        Text("Create an Account", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
@@ -62,7 +64,7 @@ fun LoginScreen(navController: NavHostController, loginViewModel: LoginViewModel
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            enabled = loginState !is LoginState.Loading
+            enabled = state !is SignUpState.Loading
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -72,44 +74,50 @@ fun LoginScreen(navController: NavHostController, loginViewModel: LoginViewModel
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            enabled = loginState !is LoginState.Loading
+            enabled = state !is SignUpState.Loading
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state !is SignUpState.Loading,
+            isError = password != confirmPassword
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { loginViewModel.login(email, password) },
+            onClick = { signUpViewModel.signUp(email, password) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = loginState !is LoginState.Loading
+            enabled = state !is SignUpState.Loading && password == confirmPassword
         ) {
-            if (loginState is LoginState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+            if (state is SignUpState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.height(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             } else {
-                Text("Login")
+                Text("Sign Up")
             }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(
-            onClick = { navController.navigate("forgot_password") },
-            enabled = loginState !is LoginState.Loading
-        ) {
-            Text("Forgot Password?")
         }
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(
-            onClick = { navController.navigate("signup") },
-            enabled = loginState !is LoginState.Loading
+            onClick = { navController.navigate("login") },
+            enabled = state !is SignUpState.Loading
         ) {
-            Text("Don\'t have an account? Sign Up")
+            Text("Already have an account? Login")
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenPreview() {
+fun SignUpScreenPreview() {
     PayClockTheme {
-        LoginScreen(navController = rememberNavController())
+        SignUpScreen(navController = rememberNavController())
     }
 }

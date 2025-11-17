@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.data.models
+package uk.ac.tees.mad.payclock.features.auth.data
 
 /**
  * Represents a user object received from the Django REST Framework backend.

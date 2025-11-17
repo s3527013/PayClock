@@ -1,6 +1,11 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.jobs
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -8,8 +13,23 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -17,9 +37,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import uk.ac.tees.mad.payclock.data.models.Job
-import uk.ac.tees.mad.payclock.viewmodel.JobViewModel
-import uk.ac.tees.mad.payclock.viewmodel.TimeLogViewModel
+import uk.ac.tees.mad.payclock.features.jobs.data.Job
+import uk.ac.tees.mad.payclock.features.timelog.TimeLogViewModel
 
 @Composable
 fun JobScreenRoute(
@@ -28,6 +47,8 @@ fun JobScreenRoute(
     timeLogViewModel: TimeLogViewModel = viewModel(),
 ) {
     val jobs by jobViewModel.jobs.collectAsState()
+    val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
+
     JobScreen(
         jobs = jobs,
         onAddJob = { name, rate, breakTime -> jobViewModel.addJob(name, rate, breakTime) },
@@ -35,8 +56,9 @@ fun JobScreenRoute(
         onRemoveJob = { jobViewModel.removeJob(it) },
         onStartTimelog = { jobId ->
             timeLogViewModel.startNewShift(jobId)
-            navController.navigate("time_log") // Navigate to see the active shift
-        }
+            navController.navigate("active_time_log") // Navigate to see the active shift
+        },
+        isShiftActive = activeTimeLog != null
     )
 }
 
@@ -48,6 +70,7 @@ fun JobScreen(
     onUpdateJob: (Job) -> Unit,
     onRemoveJob: (Job) -> Unit,
     onStartTimelog: (String) -> Unit,
+    isShiftActive: Boolean,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var jobToEdit by remember { mutableStateOf<Job?>(null) }
@@ -95,7 +118,8 @@ fun JobScreen(
                     job = job,
                     onEdit = { jobToEdit = job },
                     onDelete = { onRemoveJob(job) },
-                    onStartTimelog = { onStartTimelog(job.id) }
+                    onStartTimelog = { onStartTimelog(job.id) },
+                    isShiftActive = isShiftActive
                 )
             }
         }
@@ -103,7 +127,13 @@ fun JobScreen(
 }
 
 @Composable
-fun JobItem(job: Job, onEdit: () -> Unit, onDelete: () -> Unit, onStartTimelog: () -> Unit) {
+fun JobItem(
+    job: Job,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onStartTimelog: () -> Unit,
+    isShiftActive: Boolean
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -121,7 +151,7 @@ fun JobItem(job: Job, onEdit: () -> Unit, onDelete: () -> Unit, onStartTimelog: 
                 Text(text = "£${job.hourlyRate}/hr")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onStartTimelog) {
+                IconButton(onClick = onStartTimelog, enabled = !isShiftActive) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Start Shift")
                 }
                 IconButton(onClick = onEdit) {
@@ -248,6 +278,7 @@ fun JobScreenPreview() {
         onAddJob = { _, _, _ -> },
         onUpdateJob = { _ -> },
         onRemoveJob = {},
-        onStartTimelog = {}
+        onStartTimelog = {},
+        isShiftActive = false
     )
 }

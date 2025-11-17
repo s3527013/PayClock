@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.data.repository
+package uk.ac.tees.mad.payclock.features.auth
 
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth

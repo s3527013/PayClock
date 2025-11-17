@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.viewmodel
+package uk.ac.tees.mad.payclock.features.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import uk.ac.tees.mad.payclock.data.repository.AuthRepository
 
 sealed class SignUpState {
     object Idle : SignUpState()

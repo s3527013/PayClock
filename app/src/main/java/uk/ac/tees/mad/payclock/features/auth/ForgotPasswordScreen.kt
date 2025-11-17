@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.screens
+package uk.ac.tees.mad.payclock.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +19,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
-import uk.ac.tees.mad.payclock.viewmodel.ForgotPasswordState
-import uk.ac.tees.mad.payclock.viewmodel.ForgotPasswordViewModel
 
 @Composable
 fun ForgotPasswordScreen(

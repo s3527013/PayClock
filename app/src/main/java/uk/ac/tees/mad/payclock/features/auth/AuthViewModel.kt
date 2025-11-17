@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.payclock.viewmodel
+package uk.ac.tees.mad.payclock.features.auth
 
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
