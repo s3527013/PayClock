@@ -6,13 +6,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import uk.ac.tees.mad.payclock.features.timelog.data.repository.TimeLogRepository
 
 class TimeLogViewModel(
-    private val timeLogRepository: TimeLogRepository = Graph.timeLogRepository
+    private val timeLogRepository: TimeLogRepository
 ) : ViewModel() {
 
     val allTimeLogs: StateFlow<List<TimeLogWithJob>> = timeLogRepository.allTimeLogs.stateIn(

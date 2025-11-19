@@ -24,7 +24,7 @@ class TimeLogRepository(
 
     val allTimeLogs: Flow<List<TimeLogWithJob>> =
         if (userId != null) {
-            val timeLogsFlow = firestore.collection("time_logs")
+            val timeLogsFlow = firestore.collection("timeLogs")
                 .whereEqualTo("userId", userId)
                 .orderBy("startTime", Query.Direction.DESCENDING)
                 .snapshots()
@@ -59,7 +59,7 @@ class TimeLogRepository(
                 jobId = jobId,
                 startTime = Date()
             )
-            firestore.collection("time_logs").add(newLog)
+            firestore.collection("timeLogs").add(newLog)
         }
     }
 
@@ -76,14 +76,14 @@ class TimeLogRepository(
                     endTime = now,
                     duration = duration
                 )
-                firestore.collection("time_logs").document(log.id).set(updatedLog)
+                firestore.collection("timeLogs").document(log.id).set(updatedLog)
             }
         }
     }
 
     suspend fun deleteTimeLog(timeLog: TimeLog) {
         if (timeLog.id.isNotBlank()) {
-            firestore.collection("time_logs").document(timeLog.id).delete()
+            firestore.collection("timeLogs").document(timeLog.id).delete()
         }
     }
 }

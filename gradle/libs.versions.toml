@@ -1,7 +1,7 @@
 [versions]
 agp = "8.13.1"
 desugar_jdk_libs = "2.1.5"
-firebaseBom = "34.5.0"
+firebaseBom = "34.6.0"
 kotlin = "2.2.21"
 kotlinxSerializationJson = "1.9.0"
 ksp = "2.2.21-2.0.4" # KSP version aligned with Kotlin
@@ -19,6 +19,7 @@ legacySupportV4 = "1.0.0"
 recyclerview = "1.4.0"
 firebaseCrashlyticsBuildtools = "3.0.6"
 roomCompiler = "2.8.3"
+firebaseStorage = "22.0.1"
 
 [libraries]
 androidx-compose-material-icons-extended-android = { module = "androidx.compose.material:material-icons-extended-android", version.ref = "materialIconsExtendedAndroid" }
@@ -49,6 +50,7 @@ androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
