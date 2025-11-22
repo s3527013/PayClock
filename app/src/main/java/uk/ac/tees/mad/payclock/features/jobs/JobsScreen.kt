@@ -1,6 +1,5 @@
 package uk.ac.tees.mad.payclock.features.jobs
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,7 +55,6 @@ fun JobScreenRoute(
         onUpdateJob = { jobViewModel.updateJob(it) },
         onRemoveJob = { jobViewModel.removeJob(it) },
         onGoToTimeLogControl = {
-            Log.d("JobScreenRoute", "Job clicked: ${it.id}")
             jobViewModel.setActiveJob(it)
             navController.navigate("time_log_control")
         },
@@ -76,6 +74,7 @@ fun JobScreen(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var jobToEdit by remember { mutableStateOf<Job?>(null) }
+    var jobToDelete by remember { mutableStateOf<Job?>(null) } // New state for delete confirmation
 
     Scaffold(topBar = {
         TopAppBar(
@@ -101,6 +100,18 @@ fun JobScreen(
             })
         }
 
+        // Show delete confirmation dialog
+        jobToDelete?.let { job ->
+            DeleteJobDialog(
+                job = job,
+                onDismiss = { jobToDelete = null },
+                onConfirm = {
+                    onRemoveJob(job)
+                    jobToDelete = null
+                }
+            )
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -110,7 +121,7 @@ fun JobScreen(
                 JobItem(
                     job = job,
                     onEdit = { jobToEdit = job },
-                    onDelete = { onRemoveJob(job) },
+                    onDelete = { jobToDelete = job }, // Updated to show dialog
                     onGoToTimeLogControl = { onGoToTimeLogControl(job) },
                     isShiftActive = isShiftActive
                 )
@@ -118,6 +129,30 @@ fun JobScreen(
         }
     }
 }
+
+@Composable
+fun DeleteJobDialog(
+    job: Job,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Job") },
+        text = { Text("Are you sure you want to delete the job \"${job.name}\"? This action cannot be undone.") },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 @Composable
 fun JobItem(

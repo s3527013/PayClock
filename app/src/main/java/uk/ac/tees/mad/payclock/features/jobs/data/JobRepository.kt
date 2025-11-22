@@ -7,11 +7,12 @@ import com.google.firebase.firestore.toObjects
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.tasks.await
+import uk.ac.tees.mad.payclock.features.timelog.data.repository.TimeLogRepository
 
 class JobRepository(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val timeLogRepository: TimeLogRepository // Added dependency
 ) {
 
     private val userId = auth.currentUser?.uid
@@ -26,36 +27,29 @@ class JobRepository(
             flowOf(emptyList())
         }
 
-    fun addJob(name: String, rate: Double, breakTime: Int) {
+    suspend fun addJob(name: String, hourlyRate: Double, breakTimeInMinutes: Int) {
         val userId = auth.currentUser?.uid ?: return
         val newJob = Job(
+            userId = userId,
             name = name,
-            hourlyRate = rate,
-            breakTimeInMinutes = breakTime,
-            userId = userId
+            hourlyRate = hourlyRate,
+            breakTimeInMinutes = breakTimeInMinutes
         )
         firestore.collection("jobs").add(newJob)
     }
 
-    suspend fun getJob(jobId: String): Job? {
-        if (jobId.isBlank()) return null
-        return try {
-            firestore.collection("jobs").document(jobId).get().await().toObject(Job::class.java)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    fun updateJob(job: Job) {
+    suspend fun updateJob(job: Job) {
         if (job.id.isNotBlank()) {
             firestore.collection("jobs").document(job.id).set(job)
         }
     }
 
-    fun removeJob(job: Job) {
+    suspend fun removeJob(job: Job) {
         if (job.id.isNotBlank()) {
+            // First, delete all time logs associated with this job
+            timeLogRepository.deleteTimeLogsForJob(job.id)
+            // Then, delete the job itself
             firestore.collection("jobs").document(job.id).delete()
         }
     }
-
 }

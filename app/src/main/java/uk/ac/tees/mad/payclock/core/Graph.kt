@@ -16,12 +16,12 @@ object Graph {
         FirebaseFirestore.getInstance()
     }
 
-    private val timeLogRepository: TimeLogRepository by lazy {
+    val timeLogRepository: TimeLogRepository by lazy {
         TimeLogRepository(firebaseAuth, firebaseFirestore)
     }
 
-    private val jobRepository: JobRepository by lazy {
-        JobRepository(firebaseAuth, firebaseFirestore)
+    val jobRepository: JobRepository by lazy {
+        JobRepository(firebaseAuth, firebaseFirestore, timeLogRepository)
     }
 
     val jobViewModel: JobViewModel by lazy {

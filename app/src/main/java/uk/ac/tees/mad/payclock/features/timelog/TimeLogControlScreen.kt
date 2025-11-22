@@ -37,22 +37,29 @@ fun TimeLogControlScreenRoute(
 
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
 
-    // Determine if the currently active log is for the job we are viewing
+    // This is the primary state we care about for this screen
     val isThisJobActive = activeTimeLog?.timeLog?.jobId == job?.id
 
-    // When the active log is cleared (shift ends), pop back to the previous screen
-    LaunchedEffect(activeTimeLog) {
-        if (isThisJobActive && activeTimeLog == null) {
+    // *** SOLUTION: Refined LaunchedEffect Logic ***
+    LaunchedEffect(isThisJobActive, job) {
+        if (job == null) {
             navController.popBackStack()
         }
     }
 
-    job?.let {
+    job?.let { currentJob ->
         TimeLogControlScreen(
-            jobName = it.name,
+            jobName = currentJob.name,
             startTime = if (isThisJobActive) activeTimeLog?.timeLog?.startTime else null,
-            onStartClick = { timeLogViewModel.startNewShift(it.id) },
-            onStopClick = { timeLogViewModel.endCurrentShift() }
+            onStartClick = { timeLogViewModel.startNewShift(currentJob.id) },
+            onStopClick = {
+                timeLogViewModel.endCurrentShift()
+                navController.navigate("jobs") {
+                    popUpTo("jobs") {
+                        inclusive = true
+                    }
+                }
+            }
         )
     }
 }
@@ -67,14 +74,17 @@ fun TimeLogControlScreen(
 ) {
     var elapsedTime by remember { mutableStateOf(Duration.ZERO) }
 
+    // This LaunchedEffect will re-launch if startTime changes (from null to a Date or vice-versa)
     LaunchedEffect(key1 = startTime) {
         if (startTime != null) {
+            // Timer loop
             while (true) {
                 val now = Date()
                 elapsedTime = Duration.ofMillis(now.time - startTime.time)
                 delay(1000)
             }
         } else {
+            // If startTime is null, reset the timer display
             elapsedTime = Duration.ZERO
         }
     }
