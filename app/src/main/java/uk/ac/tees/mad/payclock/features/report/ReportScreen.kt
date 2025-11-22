@@ -36,10 +36,18 @@ fun ReportScreenRoute(
     val reportViewModel: ReportViewModel = Graph.reportViewModel
     val jobReports by reportViewModel.jobReports.collectAsState()
     val dailyReports by reportViewModel.dailyReports.collectAsState()
+    val weeklyReports by reportViewModel.weeklyReports.collectAsState()
+    val monthlyReports by reportViewModel.monthlyReports.collectAsState()
+    val quarterlyReports by reportViewModel.quarterlyReports.collectAsState()
+    val yearlyReports by reportViewModel.yearlyReports.collectAsState()
 
     ReportScreen(
         jobReports = jobReports,
         dailyReports = dailyReports,
+        weeklyReports = weeklyReports,
+        monthlyReports = monthlyReports,
+        quarterlyReports = quarterlyReports,
+        yearlyReports = yearlyReports,
         navController = navController
     )
 }
@@ -49,10 +57,14 @@ fun ReportScreenRoute(
 fun ReportScreen(
     jobReports: List<JobReport>,
     dailyReports: List<DailyReport>,
+    weeklyReports: List<WeeklyReport>,
+    monthlyReports: List<MonthlyReport>,
+    quarterlyReports: List<QuarterlyReport>,
+    yearlyReports: List<YearlyReport>,
     navController: NavHostController
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("By Job", "Daily")
+    val tabs = listOf("By Job", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly")
 
     Scaffold(
         topBar = {
@@ -72,11 +84,16 @@ fun ReportScreen(
             when (selectedTabIndex) {
                 0 -> JobReportList(reports = jobReports)
                 1 -> DailyReportList(reports = dailyReports)
+                2 -> WeeklyReportList(reports = weeklyReports)
+                3 -> MonthlyReportList(reports = monthlyReports)
+                4 -> QuarterlyReportList(reports = quarterlyReports)
+                5 -> YearlyReportList(reports = yearlyReports)
             }
         }
     }
 }
 
+// Lists for each report type
 @Composable
 fun JobReportList(reports: List<JobReport>) {
     LazyColumn(
@@ -101,31 +118,105 @@ fun DailyReportList(reports: List<DailyReport>) {
     }
 }
 
-
 @Composable
-fun JobReportItem(report: JobReport) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+fun WeeklyReportList(reports: List<WeeklyReport>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = report.jobName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total Hours")
-                Text("%.2f".format(report.totalHours))
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total Earnings")
-                Text("£%.2f".format(report.totalEarnings))
-            }
+        items(reports) { report ->
+            WeeklyReportItem(report = report)
         }
     }
 }
 
 @Composable
+fun MonthlyReportList(reports: List<MonthlyReport>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(reports) { report ->
+            MonthlyReportItem(report = report)
+        }
+    }
+}
+
+@Composable
+fun QuarterlyReportList(reports: List<QuarterlyReport>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(reports) { report ->
+            QuarterlyReportItem(report = report)
+        }
+    }
+}
+
+@Composable
+fun YearlyReportList(reports: List<YearlyReport>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(reports) { report ->
+            YearlyReportItem(report = report)
+        }
+    }
+}
+
+// Items for each report type
+@Composable
+fun JobReportItem(report: JobReport) {
+    ReportCard(title = report.jobName, hours = report.totalHours, earnings = report.totalEarnings)
+}
+
+@Composable
 fun DailyReportItem(report: DailyReport) {
     val formatter = remember { DateTimeFormatter.ofPattern("dd MMMM yyyy") }
+    ReportCard(
+        title = report.date.format(formatter),
+        hours = report.totalHours,
+        earnings = report.totalEarnings
+    )
+}
+
+@Composable
+fun WeeklyReportItem(report: WeeklyReport) {
+    ReportCard(title = report.weekLabel, hours = report.totalHours, earnings = report.totalEarnings)
+}
+
+@Composable
+fun MonthlyReportItem(report: MonthlyReport) {
+    ReportCard(
+        title = report.monthLabel,
+        hours = report.totalHours,
+        earnings = report.totalEarnings
+    )
+}
+
+@Composable
+fun QuarterlyReportItem(report: QuarterlyReport) {
+    ReportCard(
+        title = report.quarterLabel,
+        hours = report.totalHours,
+        earnings = report.totalEarnings
+    )
+}
+
+@Composable
+fun YearlyReportItem(report: YearlyReport) {
+    ReportCard(
+        title = report.year.toString(),
+        hours = report.totalHours,
+        earnings = report.totalEarnings
+    )
+}
+
+// A generic card to display report data, reducing repetition.
+@Composable
+fun ReportCard(title: String, hours: Double, earnings: Double) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,17 +224,23 @@ fun DailyReportItem(report: DailyReport) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = report.date.format(formatter),
+                text = title,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
             )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text("Total Hours")
-                Text("%.2f".format(report.totalHours))
+                Text("%.2f".format(hours))
             }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text("Total Earnings")
-                Text("£%.2f".format(report.totalEarnings))
+                Text("£%.2f".format(earnings))
             }
         }
     }
