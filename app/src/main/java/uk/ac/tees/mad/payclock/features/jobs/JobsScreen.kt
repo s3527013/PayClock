@@ -35,17 +35,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogViewModel
 
 @Composable
 fun JobScreenRoute(
     navController: NavHostController,
-    jobViewModel: JobViewModel = viewModel(),
-    timeLogViewModel: TimeLogViewModel = viewModel(),
 ) {
+    val jobViewModel: JobViewModel = Graph.jobViewModel
+    val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
     val jobs by jobViewModel.jobs.collectAsState()
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
 
@@ -54,9 +54,9 @@ fun JobScreenRoute(
         onAddJob = { name, rate, breakTime -> jobViewModel.addJob(name, rate, breakTime) },
         onUpdateJob = { jobViewModel.updateJob(it) },
         onRemoveJob = { jobViewModel.removeJob(it) },
-        onStartTimelog = { jobId ->
-            timeLogViewModel.startNewShift(jobId)
-            navController.navigate("active_time_log") // Navigate to see the active shift
+        onGoToTimeLogControl = {
+            jobViewModel.setActiveJob(it)
+            navController.navigate("time_log_control")
         },
         isShiftActive = activeTimeLog != null
     )
@@ -69,41 +69,45 @@ fun JobScreen(
     onAddJob: (String, Double, Int) -> Unit,
     onUpdateJob: (Job) -> Unit,
     onRemoveJob: (Job) -> Unit,
-    onStartTimelog: (String) -> Unit,
+    onGoToTimeLogControl: (Job) -> Unit,
     isShiftActive: Boolean,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var jobToEdit by remember { mutableStateOf<Job?>(null) }
+    var jobToDelete by remember { mutableStateOf<Job?>(null) } // New state for delete confirmation
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Job Profiles") }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Job")
-            }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("Job Profiles") })
+    }, floatingActionButton = {
+        FloatingActionButton(onClick = { showAddDialog = true }) {
+            Icon(Icons.Default.Add, contentDescription = "Add Job")
         }
-    ) { padding ->
+    }) { padding ->
         if (showAddDialog) {
             AddJobDialog(
                 onDismiss = { showAddDialog = false },
                 onJobAdd = { name, rate, breakTime ->
                     onAddJob(name, rate, breakTime)
                     showAddDialog = false
-                }
-            )
+                })
         }
 
         jobToEdit?.let { job ->
-            UpdateJobDialog(
+            UpdateJobDialog(job = job, onDismiss = { jobToEdit = null }, onJobUpdate = {
+                onUpdateJob(it)
+                jobToEdit = null
+            })
+        }
+
+        // Show delete confirmation dialog
+        jobToDelete?.let { job ->
+            DeleteJobDialog(
                 job = job,
-                onDismiss = { jobToEdit = null },
-                onJobUpdate = {
-                    onUpdateJob(it)
-                    jobToEdit = null
+                onDismiss = { jobToDelete = null },
+                onConfirm = {
+                    onRemoveJob(job)
+                    jobToDelete = null
                 }
             )
         }
@@ -117,8 +121,8 @@ fun JobScreen(
                 JobItem(
                     job = job,
                     onEdit = { jobToEdit = job },
-                    onDelete = { onRemoveJob(job) },
-                    onStartTimelog = { onStartTimelog(job.id) },
+                    onDelete = { jobToDelete = job }, // Updated to show dialog
+                    onGoToTimeLogControl = { onGoToTimeLogControl(job) },
                     isShiftActive = isShiftActive
                 )
             }
@@ -127,11 +131,35 @@ fun JobScreen(
 }
 
 @Composable
+fun DeleteJobDialog(
+    job: Job,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Job") },
+        text = { Text("Are you sure you want to delete the job \"${job.name}\"? This action cannot be undone.") },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+
+@Composable
 fun JobItem(
     job: Job,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onStartTimelog: () -> Unit,
+    onGoToTimeLogControl: () -> Unit,
     isShiftActive: Boolean
 ) {
     Card(
@@ -151,7 +179,7 @@ fun JobItem(
                 Text(text = "£${job.hourlyRate}/hr")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onStartTimelog, enabled = !isShiftActive) {
+                IconButton(onClick = onGoToTimeLogControl, ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Start Shift")
                 }
                 IconButton(onClick = onEdit) {
@@ -167,118 +195,112 @@ fun JobItem(
 
 @Composable
 fun AddJobDialog(
-    onDismiss: () -> Unit,
-    onJobAdd: (String, Double, Int) -> Unit
+    onDismiss: () -> Unit, onJobAdd: (String, Double, Int) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var hourlyRate by remember { mutableStateOf("") }
     var breakTime by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Job") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Job Name") }
-                )
-                OutlinedTextField(
-                    value = hourlyRate,
-                    onValueChange = { hourlyRate = it },
-                    label = { Text("Hourly Rate") },
-                )
-                OutlinedTextField(
-                    value = breakTime,
-                    onValueChange = { breakTime = it },
-                    label = { Text("Break Time (minutes)") }
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val rate = hourlyRate.toDoubleOrNull() ?: 0.0
-                    val breakMinutes = breakTime.toIntOrNull() ?: 0
-                    onJobAdd(name, rate, breakMinutes)
-                }
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Cancel")
-            }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Job") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Job Name") })
+            OutlinedTextField(
+                value = hourlyRate,
+                onValueChange = { hourlyRate = it },
+                label = { Text("Hourly Rate") },
+            )
+            OutlinedTextField(
+                value = breakTime,
+                onValueChange = { breakTime = it },
+                label = { Text("Break Time (minutes)") })
         }
-    )
+    }, confirmButton = {
+        Button(
+            onClick = {
+                val rate = hourlyRate.toDoubleOrNull() ?: 0.0
+                val breakMinutes = breakTime.toIntOrNull() ?: 0
+                onJobAdd(name, rate, breakMinutes)
+            }) {
+            Text("Add")
+        }
+    }, dismissButton = {
+        Button(onClick = onDismiss) {
+            Text("Cancel")
+        }
+    })
 }
 
 @Composable
 fun UpdateJobDialog(
-    job: Job,
-    onDismiss: () -> Unit,
-    onJobUpdate: (Job) -> Unit
+    job: Job, onDismiss: () -> Unit, onJobUpdate: (Job) -> Unit
 ) {
     var name by remember { mutableStateOf(job.name) }
     var hourlyRate by remember { mutableStateOf(job.hourlyRate.toString()) }
     var breakTime by remember { mutableStateOf(job.breakTimeInMinutes.toString()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Update Job") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Job Name") }
-                )
-                OutlinedTextField(
-                    value = hourlyRate,
-                    onValueChange = { hourlyRate = it },
-                    label = { Text("Hourly Rate") }
-                )
-                OutlinedTextField(
-                    value = breakTime,
-                    onValueChange = { breakTime = it },
-                    label = { Text("Break Time (minutes)") }
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val rate = hourlyRate.toDoubleOrNull() ?: job.hourlyRate
-                    val breakMinutes = breakTime.toIntOrNull() ?: job.breakTimeInMinutes
-                    onJobUpdate(job.copy(name = name, hourlyRate = rate, breakTimeInMinutes = breakMinutes))
-                }
-            ) {
-                Text("Update")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Cancel")
-            }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Update Job") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Job Name") })
+            OutlinedTextField(
+                value = hourlyRate,
+                onValueChange = { hourlyRate = it },
+                label = { Text("Hourly Rate") })
+            OutlinedTextField(
+                value = breakTime,
+                onValueChange = { breakTime = it },
+                label = { Text("Break Time (minutes)") })
         }
-    )
+    }, confirmButton = {
+        Button(
+            onClick = {
+                val rate = hourlyRate.toDoubleOrNull() ?: job.hourlyRate
+                val breakMinutes = breakTime.toIntOrNull() ?: job.breakTimeInMinutes
+                onJobUpdate(
+                    job.copy(
+                        name = name, hourlyRate = rate, breakTimeInMinutes = breakMinutes
+                    )
+                )
+            }) {
+            Text("Update")
+        }
+    }, dismissButton = {
+        Button(onClick = onDismiss) {
+            Text("Cancel")
+        }
+    })
 }
 
 @Preview(showBackground = true)
 @Composable
 fun JobScreenPreview() {
     val sampleJobs = listOf(
-        Job(id = "1", userId = "user1", name = "Android Developer", hourlyRate = 25.50, breakTimeInMinutes = 30),
-        Job(id = "2", userId = "user1", name = "UX Designer", hourlyRate = 30.0, breakTimeInMinutes = 60),
+        Job(
+            id = "1",
+            userId = "user1",
+            name = "Android Developer",
+            hourlyRate = 25.50,
+            breakTimeInMinutes = 30
+        ),
+        Job(
+            id = "2",
+            userId = "user1",
+            name = "UX Designer",
+            hourlyRate = 30.0,
+            breakTimeInMinutes = 60
+        ),
     )
     JobScreen(
         jobs = sampleJobs,
         onAddJob = { _, _, _ -> },
         onUpdateJob = { _ -> },
         onRemoveJob = {},
-        onStartTimelog = {},
+        onGoToTimeLogControl = {},
         isShiftActive = false
     )
 }

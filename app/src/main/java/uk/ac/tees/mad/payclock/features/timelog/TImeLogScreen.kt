@@ -20,9 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import java.time.ZoneId
@@ -32,8 +32,8 @@ import java.util.Date
 @Composable
 fun TimeLogScreenRoute(
     navController: NavHostController,
-    timeLogViewModel: TimeLogViewModel = viewModel()
 ) {
+    val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
     val allTimeLogs by timeLogViewModel.allTimeLogs.collectAsState()
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
 
