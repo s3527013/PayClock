@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,32 +24,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import uk.ac.tees.mad.payclock.core.Graph
-import java.time.format.DateTimeFormatter
+import uk.ac.tees.mad.payclock.features.jobs.data.Job
 
 @Composable
 fun ReportScreenRoute(
     navController: NavHostController,
 ) {
     val reportViewModel: ReportViewModel = Graph.reportViewModel
-    val jobReports by reportViewModel.jobReports.collectAsState()
-    val dailyReports by reportViewModel.dailyReports.collectAsState()
-    val weeklyReports by reportViewModel.weeklyReports.collectAsState()
-    val monthlyReports by reportViewModel.monthlyReports.collectAsState()
-    val quarterlyReports by reportViewModel.quarterlyReports.collectAsState()
-    val yearlyReports by reportViewModel.yearlyReports.collectAsState()
+    val jobs by reportViewModel.jobs.collectAsState()
+    val selectedJobId by reportViewModel.selectedJobId.collectAsState()
+    val selectedReportType by reportViewModel.selectedReportType.collectAsState()
+    val timeSeriesReport by reportViewModel.timeSeriesReport.collectAsState()
 
     ReportScreen(
-        jobReports = jobReports,
-        dailyReports = dailyReports,
-        weeklyReports = weeklyReports,
-        monthlyReports = monthlyReports,
-        quarterlyReports = quarterlyReports,
-        yearlyReports = yearlyReports,
+        jobs = jobs,
+        selectedJobId = selectedJobId,
+        selectedReportType = selectedReportType,
+        timeSeriesReport = timeSeriesReport,
+        onJobSelected = { reportViewModel.selectJob(it) },
+        onReportTypeSelected = { reportViewModel.selectReportType(it) },
         navController = navController
     )
 }
@@ -55,166 +56,120 @@ fun ReportScreenRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen(
-    jobReports: List<JobReport>,
-    dailyReports: List<DailyReport>,
-    weeklyReports: List<WeeklyReport>,
-    monthlyReports: List<MonthlyReport>,
-    quarterlyReports: List<QuarterlyReport>,
-    yearlyReports: List<YearlyReport>,
+    jobs: List<Job>,
+    selectedJobId: String?,
+    selectedReportType: ReportType,
+    timeSeriesReport: List<TimeSeriesReportItem>,
+    onJobSelected: (String?) -> Unit,
+    onReportTypeSelected: (ReportType) -> Unit,
     navController: NavHostController
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("By Job", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly")
-
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Reports") })
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
-                    )
+            FilterControls(
+                jobs = jobs,
+                selectedJobId = selectedJobId,
+                selectedReportType = selectedReportType,
+                onJobSelected = onJobSelected,
+                onReportTypeSelected = onReportTypeSelected
+            )
+            TimeSeriesReportList(reportItems = timeSeriesReport)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilterControls(
+    jobs: List<Job>,
+    selectedJobId: String?,
+    selectedReportType: ReportType,
+    onJobSelected: (String?) -> Unit,
+    onReportTypeSelected: (ReportType) -> Unit
+) {
+    var jobMenuExpanded by remember { mutableStateOf(false) }
+    var reportTypeMenuExpanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Job Filter
+        ExposedDropdownMenuBox(
+            expanded = jobMenuExpanded,
+            onExpandedChange = { jobMenuExpanded = !jobMenuExpanded },
+            modifier = Modifier.weight(1f)
+        ) {
+            TextField(
+                value = jobs.find { it.id == selectedJobId }?.name ?: "All Jobs",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Job") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = jobMenuExpanded) },
+                modifier = Modifier.menuAnchor()
+            )
+            ExposedDropdownMenu(expanded = jobMenuExpanded, onDismissRequest = { jobMenuExpanded = false }) {
+                DropdownMenuItem(text = { Text("All Jobs") }, onClick = {
+                    onJobSelected(null)
+                    jobMenuExpanded = false
+                })
+                jobs.forEach {
+                    DropdownMenuItem(text = { Text(it.name) }, onClick = {
+                        onJobSelected(it.id)
+                        jobMenuExpanded = false
+                    })
                 }
             }
-            when (selectedTabIndex) {
-                0 -> JobReportList(reports = jobReports)
-                1 -> DailyReportList(reports = dailyReports)
-                2 -> WeeklyReportList(reports = weeklyReports)
-                3 -> MonthlyReportList(reports = monthlyReports)
-                4 -> QuarterlyReportList(reports = quarterlyReports)
-                5 -> YearlyReportList(reports = yearlyReports)
+        }
+
+        // Report Type Filter
+        ExposedDropdownMenuBox(
+            expanded = reportTypeMenuExpanded,
+            onExpandedChange = { reportTypeMenuExpanded = !reportTypeMenuExpanded },
+            modifier = Modifier.weight(1f)
+        ) {
+            TextField(
+                value = selectedReportType.name,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Period") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reportTypeMenuExpanded) },
+                modifier = Modifier.menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = reportTypeMenuExpanded,
+                onDismissRequest = { reportTypeMenuExpanded = false }
+            ) {
+                ReportType.values().forEach {
+                    DropdownMenuItem(text = { Text(it.name) }, onClick = {
+                        onReportTypeSelected(it)
+                        reportTypeMenuExpanded = false
+                    })
+                }
             }
         }
     }
 }
 
-// Lists for each report type
 @Composable
-fun JobReportList(reports: List<JobReport>) {
+fun TimeSeriesReportList(reportItems: List<TimeSeriesReportItem>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(reports) { report ->
-            JobReportItem(report = report)
+        items(reportItems) { item ->
+            ReportCard(title = item.label, hours = item.totalHours, earnings = item.totalEarnings)
         }
     }
 }
 
-@Composable
-fun DailyReportList(reports: List<DailyReport>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(reports) { report ->
-            DailyReportItem(report = report)
-        }
-    }
-}
-
-@Composable
-fun WeeklyReportList(reports: List<WeeklyReport>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(reports) { report ->
-            WeeklyReportItem(report = report)
-        }
-    }
-}
-
-@Composable
-fun MonthlyReportList(reports: List<MonthlyReport>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(reports) { report ->
-            MonthlyReportItem(report = report)
-        }
-    }
-}
-
-@Composable
-fun QuarterlyReportList(reports: List<QuarterlyReport>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(reports) { report ->
-            QuarterlyReportItem(report = report)
-        }
-    }
-}
-
-@Composable
-fun YearlyReportList(reports: List<YearlyReport>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(reports) { report ->
-            YearlyReportItem(report = report)
-        }
-    }
-}
-
-// Items for each report type
-@Composable
-fun JobReportItem(report: JobReport) {
-    ReportCard(title = report.jobName, hours = report.totalHours, earnings = report.totalEarnings)
-}
-
-@Composable
-fun DailyReportItem(report: DailyReport) {
-    val formatter = remember { DateTimeFormatter.ofPattern("dd MMMM yyyy") }
-    ReportCard(
-        title = report.date.format(formatter),
-        hours = report.totalHours,
-        earnings = report.totalEarnings
-    )
-}
-
-@Composable
-fun WeeklyReportItem(report: WeeklyReport) {
-    ReportCard(title = report.weekLabel, hours = report.totalHours, earnings = report.totalEarnings)
-}
-
-@Composable
-fun MonthlyReportItem(report: MonthlyReport) {
-    ReportCard(
-        title = report.monthLabel,
-        hours = report.totalHours,
-        earnings = report.totalEarnings
-    )
-}
-
-@Composable
-fun QuarterlyReportItem(report: QuarterlyReport) {
-    ReportCard(
-        title = report.quarterLabel,
-        hours = report.totalHours,
-        earnings = report.totalEarnings
-    )
-}
-
-@Composable
-fun YearlyReportItem(report: YearlyReport) {
-    ReportCard(
-        title = report.year.toString(),
-        hours = report.totalHours,
-        earnings = report.totalEarnings
-    )
-}
-
-// A generic card to display report data, reducing repetition.
 @Composable
 fun ReportCard(title: String, hours: Double, earnings: Double) {
     Card(
@@ -223,11 +178,7 @@ fun ReportCard(title: String, hours: Double, earnings: Double) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge
-            )
+            Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

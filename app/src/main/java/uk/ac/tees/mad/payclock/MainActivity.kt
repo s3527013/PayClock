@@ -7,9 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBarItem
@@ -62,11 +62,22 @@ fun PayClockApp() {
                                 icon = {
                                     when (screen) {
                                         "jobs" -> Icon(Icons.Filled.Home, contentDescription = null)
-                                        "time_log" -> Icon(Icons.Filled.List, contentDescription = null)
-                                        "reports" -> Icon(Icons.Filled.Assessment, contentDescription = null)
+                                        "time_log" -> Icon(
+                                            Icons.AutoMirrored.Filled.List,
+                                            contentDescription = null
+                                        )
+
+                                        "reports" -> Icon(
+                                            Icons.Filled.Assessment,
+                                            contentDescription = null
+                                        )
                                     }
                                 },
-                                label = { Text(screen.replaceFirstChar { it.uppercase() }) },
+                                label = {
+                                    Text(
+                                        screen.split('_')
+                                            .joinToString(" ") { it.replaceFirstChar(Char::uppercase) })
+                                },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen } == true,
                                 onClick = {
                                     navController.navigate(screen) {
