@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "741945802727",
+    "firebase_url": "https://payclock-30a7b-default-rtdb.firebaseio.com",
     "project_id": "payclock-30a7b",
     "storage_bucket": "payclock-30a7b.firebasestorage.app"
   },
@@ -12,7 +13,12 @@
           "package_name": "uk.ac.tees.mad.payclock"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "741945802727-t7jd2ss1eohkeio5tru4974hhkkg2b23.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD1uArW5rxgDMmTg0GWM_Kcbh0RcXEJE3g"
@@ -20,7 +26,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "741945802727-j05reeuihgnratfp1tmpbdl7i3tfmva5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
