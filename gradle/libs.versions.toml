@@ -1,10 +1,7 @@
 [versions]
 agp = "8.13.1"
-credentialsPlayServicesAuthVersion = "1.6.0-beta03"
-credentialsVersion = "1.6.0-beta03"
 desugar_jdk_libs = "2.1.5"
 firebaseBom = "34.6.0"
-googleidVersion = "<latest version>"
 kotlin = "2.2.21"
 kotlinxSerializationJson = "1.9.0"
 coreKtx = "1.17.0"
@@ -24,14 +21,11 @@ googleid = "1.1.1"
 [libraries]
 androidx-compose-material-icons-extended-android = { module = "androidx.compose.material:material-icons-extended-android", version.ref = "materialIconsExtendedAndroid" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-credentials-play-services-auth-v160beta03 = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentialsPlayServicesAuthVersion" }
-androidx-credentials-v160beta03 = { module = "androidx.credentials:credentials", version.ref = "credentialsVersion" }
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
-googleid-vlatestversion = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleidVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

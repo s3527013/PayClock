@@ -2,6 +2,9 @@ package uk.ac.tees.mad.payclock.core
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import uk.ac.tees.mad.payclock.features.auth.AuthRepository
+import uk.ac.tees.mad.payclock.features.breaks.BreakViewModel
+import uk.ac.tees.mad.payclock.features.breaks.data.BreakRepository
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 import uk.ac.tees.mad.payclock.features.jobs.data.JobRepository
 import uk.ac.tees.mad.payclock.features.report.ReportViewModel
@@ -17,8 +20,21 @@ object Graph {
         FirebaseFirestore.getInstance()
     }
 
+    val authRepository: AuthRepository by lazy {
+        AuthRepository()
+    }
+
+    val breakRepository: BreakRepository by lazy {
+        BreakRepository(firebaseAuth, firebaseFirestore)
+    }
+
+    val breakViewModel: BreakViewModel by lazy {
+        BreakViewModel(breakRepository)
+    }
+
+
     val timeLogRepository: TimeLogRepository by lazy {
-        TimeLogRepository(firebaseAuth, firebaseFirestore)
+        TimeLogRepository(firebaseAuth, firebaseFirestore, breakRepository)
     }
 
     val jobRepository: JobRepository by lazy {

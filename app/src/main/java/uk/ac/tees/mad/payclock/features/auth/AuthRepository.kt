@@ -1,8 +1,19 @@
 package uk.ac.tees.mad.payclock.features.auth
 
+import androidx.credentials.Credential
+import androidx.credentials.CustomCredential
+import androidx.credentials.PasswordCredential
+import androidx.credentials.PublicKeyCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -12,14 +23,46 @@ class AuthRepository {
 
     private val firebaseAuth: FirebaseAuth = Firebase.auth
 
-    /**
-     * Signs in a user with email and password.
-     */
-    suspend fun login(email: String, password: String): Result<String> {
+    val currentUser: FirebaseUser?
+        get() = firebaseAuth.currentUser
+
+    val user: Flow<FirebaseUser?> = callbackFlow {
+        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+            trySend(auth.currentUser)
+        }
+        firebaseAuth.addAuthStateListener(authStateListener)
+        awaitClose { firebaseAuth.removeAuthStateListener(authStateListener) }
+    }
+
+    suspend fun login(email: String, password: String): Result<Unit> {
         return try {
-            val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            val user = result.user
-            Result.success(user?.uid ?: "")
+            firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithGoogleCredential(credential: Credential): Result<Unit> {
+        return try {
+            when (credential) {
+                is CustomCredential -> {
+                    if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                        try {
+                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                            val firebaseCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+                            firebaseAuth.signInWithCredential(firebaseCredential).await()
+                            Result.success(Unit)
+                        } catch (e: GoogleIdTokenParsingException) {
+                            Result.failure(e)
+                        }
+                    } else {
+                        Result.failure(Exception("Unexpected custom credential type: ${credential.type}"))
+                    }
+                }
+                is PasswordCredential, is PublicKeyCredential -> Result.failure(Exception("Unsupported credential type."))
+                else -> Result.failure(Exception("Unexpected credential type."))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

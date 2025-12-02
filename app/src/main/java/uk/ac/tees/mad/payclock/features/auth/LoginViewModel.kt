@@ -1,19 +1,13 @@
 package uk.ac.tees.mad.payclock.features.auth
 
 import androidx.credentials.Credential
-import androidx.credentials.CustomCredential
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import com.google.firebase.Firebase
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import uk.ac.tees.mad.payclock.core.Graph
 
 sealed class LoginState {
     object Idle : LoginState()
@@ -22,9 +16,9 @@ sealed class LoginState {
     data class Error(val message: String) : LoginState()
 }
 
-class LoginViewModel : ViewModel() {
-
-    private val auth = Firebase.auth
+class LoginViewModel(
+    private val authRepository: AuthRepository = Graph.authRepository
+) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -36,11 +30,11 @@ class LoginViewModel : ViewModel() {
         }
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
-            try {
-                auth.signInWithEmailAndPassword(email, password).await()
+            val result = authRepository.login(email, password)
+            if (result.isSuccess) {
                 _loginState.value = LoginState.Success
-            } catch (e: Exception) {
-                _loginState.value = LoginState.Error(e.message ?: "An unknown error occurred.")
+            } else {
+                _loginState.value = LoginState.Error(result.exceptionOrNull()?.message ?: "An unknown error occurred.")
             }
         }
     }
@@ -48,35 +42,11 @@ class LoginViewModel : ViewModel() {
     fun signInWithGoogleCredential(credential: Credential) {
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
-            try {
-                when (credential) {
-                    is CustomCredential -> {
-                        if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                            try {
-                                val googleIdTokenCredential =
-                                    GoogleIdTokenCredential.createFrom(credential.data)
-                                val firebaseCredential = GoogleAuthProvider.getCredential(
-                                    googleIdTokenCredential.idToken,
-                                    null
-                                )
-                                auth.signInWithCredential(firebaseCredential).await()
-                                _loginState.value = LoginState.Success
-                            } catch (e: GoogleIdTokenParsingException) {
-                                _loginState.value =
-                                    LoginState.Error("Received an invalid google id token response: ${e.message}")
-                            }
-                        } else {
-                            _loginState.value =
-                                LoginState.Error("Unexpected custom credential type: ${credential.type}")
-                        }
-                    }
-
-                    else -> {
-                        _loginState.value = LoginState.Error("Unexpected credential type.")
-                    }
-                }
-            } catch (e: Exception) {
-                _loginState.value = LoginState.Error(e.message ?: "Google Sign-in failed.")
+            val result = authRepository.signInWithGoogleCredential(credential)
+            if (result.isSuccess) {
+                _loginState.value = LoginState.Success
+            } else {
+                _loginState.value = LoginState.Error(result.exceptionOrNull()?.message ?: "An unknown error occurred.")
             }
         }
     }

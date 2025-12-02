@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.googleid)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
+    // Coil for AsyncImage
+    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -71,8 +74,6 @@ dependencies {
 
     // Import the Firebase BoM
     implementation(platform(libs.firebase.bom))
-
-    // When using the BoM, you don't specify versions in Firebase library dependencies
 
     // Add the dependency for the Firebase SDK for Google Analytics
     implementation(libs.firebase.analytics)
