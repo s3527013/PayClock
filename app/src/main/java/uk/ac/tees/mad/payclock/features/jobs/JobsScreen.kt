@@ -51,7 +51,7 @@ fun JobScreenRoute(
 
     JobScreen(
         jobs = jobs,
-        onAddJob = { name, rate, breakTime -> jobViewModel.addJob(name, rate, breakTime) },
+        onAddJob = { name, rate -> jobViewModel.addJob(name, rate) },
         onUpdateJob = { jobViewModel.updateJob(it) },
         onRemoveJob = { jobViewModel.removeJob(it) },
         onGoToTimeLogControl = {
@@ -66,7 +66,7 @@ fun JobScreenRoute(
 @Composable
 fun JobScreen(
     jobs: List<Job>,
-    onAddJob: (String, Double, Int) -> Unit,
+    onAddJob: (String, Double) -> Unit,
     onUpdateJob: (Job) -> Unit,
     onRemoveJob: (Job) -> Unit,
     onGoToTimeLogControl: (Job) -> Unit,
@@ -87,8 +87,8 @@ fun JobScreen(
         if (showAddDialog) {
             AddJobDialog(
                 onDismiss = { showAddDialog = false },
-                onJobAdd = { name, rate, breakTime ->
-                    onAddJob(name, rate, breakTime)
+                onJobAdd = { name, rate ->
+                    onAddJob(name, rate)
                     showAddDialog = false
                 })
         }
@@ -179,7 +179,7 @@ fun JobItem(
                 Text(text = "£${job.hourlyRate}/hr")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onGoToTimeLogControl, ) {
+                IconButton(onClick = onGoToTimeLogControl) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Start Shift")
                 }
                 IconButton(onClick = onEdit) {
@@ -195,11 +195,10 @@ fun JobItem(
 
 @Composable
 fun AddJobDialog(
-    onDismiss: () -> Unit, onJobAdd: (String, Double, Int) -> Unit
+    onDismiss: () -> Unit, onJobAdd: (String, Double) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var hourlyRate by remember { mutableStateOf("") }
-    var breakTime by remember { mutableStateOf("") }
 
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Job") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -212,17 +211,12 @@ fun AddJobDialog(
                 onValueChange = { hourlyRate = it },
                 label = { Text("Hourly Rate") },
             )
-            OutlinedTextField(
-                value = breakTime,
-                onValueChange = { breakTime = it },
-                label = { Text("Break Time (minutes)") })
         }
     }, confirmButton = {
         Button(
             onClick = {
                 val rate = hourlyRate.toDoubleOrNull() ?: 0.0
-                val breakMinutes = breakTime.toIntOrNull() ?: 0
-                onJobAdd(name, rate, breakMinutes)
+                onJobAdd(name, rate)
             }) {
             Text("Add")
         }
@@ -239,7 +233,6 @@ fun UpdateJobDialog(
 ) {
     var name by remember { mutableStateOf(job.name) }
     var hourlyRate by remember { mutableStateOf(job.hourlyRate.toString()) }
-    var breakTime by remember { mutableStateOf(job.breakTimeInMinutes.toString()) }
 
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Update Job") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -251,19 +244,14 @@ fun UpdateJobDialog(
                 value = hourlyRate,
                 onValueChange = { hourlyRate = it },
                 label = { Text("Hourly Rate") })
-            OutlinedTextField(
-                value = breakTime,
-                onValueChange = { breakTime = it },
-                label = { Text("Break Time (minutes)") })
         }
     }, confirmButton = {
         Button(
             onClick = {
                 val rate = hourlyRate.toDoubleOrNull() ?: job.hourlyRate
-                val breakMinutes = breakTime.toIntOrNull() ?: job.breakTimeInMinutes
                 onJobUpdate(
                     job.copy(
-                        name = name, hourlyRate = rate, breakTimeInMinutes = breakMinutes
+                        name = name, hourlyRate = rate
                     )
                 )
             }) {
@@ -284,20 +272,18 @@ fun JobScreenPreview() {
             id = "1",
             userId = "user1",
             name = "Android Developer",
-            hourlyRate = 25.50,
-            breakTimeInMinutes = 30
+            hourlyRate = 25.50
         ),
         Job(
             id = "2",
             userId = "user1",
             name = "UX Designer",
-            hourlyRate = 30.0,
-            breakTimeInMinutes = 60
+            hourlyRate = 30.0
         ),
     )
     JobScreen(
         jobs = sampleJobs,
-        onAddJob = { _, _, _ -> },
+        onAddJob = { _, _ -> },
         onUpdateJob = { _ -> },
         onRemoveJob = {},
         onGoToTimeLogControl = {},

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
@@ -113,9 +114,12 @@ fun FilterControls(
                 readOnly = true,
                 label = { Text("Job") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = jobMenuExpanded) },
-                modifier = Modifier.menuAnchor()
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable), // Use the new overload
+
             )
-            ExposedDropdownMenu(expanded = jobMenuExpanded, onDismissRequest = { jobMenuExpanded = false }) {
+            ExposedDropdownMenu(
+                expanded = jobMenuExpanded,
+                onDismissRequest = { jobMenuExpanded = false }) {
                 DropdownMenuItem(text = { Text("All Jobs") }, onClick = {
                     onJobSelected(null)
                     jobMenuExpanded = false
@@ -141,7 +145,7 @@ fun FilterControls(
                 readOnly = true,
                 label = { Text("Period") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reportTypeMenuExpanded) },
-                modifier = Modifier.menuAnchor()
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             )
             ExposedDropdownMenu(
                 expanded = reportTypeMenuExpanded,
@@ -178,7 +182,11 @@ fun ReportCard(title: String, hours: Double, earnings: Double) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

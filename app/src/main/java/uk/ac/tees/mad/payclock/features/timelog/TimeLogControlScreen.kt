@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.delay
 import uk.ac.tees.mad.payclock.core.Graph
+import uk.ac.tees.mad.payclock.features.breaks.BreakViewModel
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 import java.time.Duration
 import java.util.Date
@@ -33,9 +34,12 @@ fun TimeLogControlScreenRoute(
 ) {
     val jobViewModel: JobViewModel = Graph.jobViewModel
     val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
+    val breakViewModel: BreakViewModel = Graph.breakViewModel
     val job by jobViewModel.activeJob.collectAsState()
 
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
+    val activeBreak by breakViewModel.activeBreak.collectAsState()
+
 
     // This is the primary state we care about for this screen
     val isThisJobActive = activeTimeLog?.timeLog?.jobId == job?.id
@@ -51,6 +55,7 @@ fun TimeLogControlScreenRoute(
         TimeLogControlScreen(
             jobName = currentJob.name,
             startTime = if (isThisJobActive) activeTimeLog?.timeLog?.startTime else null,
+            isBreakActive = activeBreak != null,
             onStartClick = { timeLogViewModel.startNewShift(currentJob.id) },
             onStopClick = {
                 timeLogViewModel.endCurrentShift()
@@ -59,7 +64,13 @@ fun TimeLogControlScreenRoute(
                         inclusive = true
                     }
                 }
-            }
+            },
+            onStartBreakClick = {
+                activeTimeLog?.timeLog?.id?.let { timeLogId ->
+                    breakViewModel.startNewBreak(timeLogId)
+                }
+            },
+            onEndBreakClick = { breakViewModel.endCurrentBreak() }
         )
     }
 }
@@ -69,8 +80,11 @@ fun TimeLogControlScreenRoute(
 fun TimeLogControlScreen(
     jobName: String,
     startTime: Date?,
+    isBreakActive: Boolean,
     onStartClick: () -> Unit,
-    onStopClick: () -> Unit
+    onStopClick: () -> Unit,
+    onStartBreakClick: () -> Unit,
+    onEndBreakClick: () -> Unit
 ) {
     var elapsedTime by remember { mutableStateOf(Duration.ZERO) }
 
@@ -108,6 +122,16 @@ fun TimeLogControlScreen(
                     style = MaterialTheme.typography.displayLarge
                 )
                 Spacer(modifier = Modifier.height(32.dp))
+                if (isBreakActive) {
+                    Button(onClick = onEndBreakClick) {
+                        Text("End Break", style = MaterialTheme.typography.titleLarge)
+                    }
+                } else {
+                    Button(onClick = onStartBreakClick) {
+                        Text("Start Unpaid Break", style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = onStopClick) {
                     Text("Stop", style = MaterialTheme.typography.titleLarge)
                 }

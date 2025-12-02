@@ -22,9 +22,9 @@ class JobViewModel(
     private val _activeJob = MutableStateFlow<Job?>(null)
     val activeJob: StateFlow<Job?> = _activeJob
 
-    fun addJob(name: String, hourlyRate: Double, breakTimeInMinutes: Int) {
+    fun addJob(name: String, hourlyRate: Double) {
         viewModelScope.launch {
-            jobRepository.addJob(name, hourlyRate, breakTimeInMinutes)
+            jobRepository.addJob(name, hourlyRate)
         }
     }
 
