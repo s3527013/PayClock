@@ -61,7 +61,7 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Coil for AsyncImage
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -79,5 +79,8 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+
+    // Location services
+    implementation(libs.play.services.location)
 }
 

@@ -16,4 +16,9 @@ data class TimeLog(
     val startTime: Date? = null,
     var endTime: Date? = null,
     var duration: Long? = null, // Duration in minutes
+    // Added nullable location fields for start and end
+    val startLatitude: Double? = null,
+    val startLongitude: Double? = null,
+    var endLatitude: Double? = null,
+    var endLongitude: Double? = null,
 )

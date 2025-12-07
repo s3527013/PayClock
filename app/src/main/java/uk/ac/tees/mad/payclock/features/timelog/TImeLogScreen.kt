@@ -1,5 +1,12 @@
+@file:Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VARIABLE", "UNUSED_VALUE")
+
 package uk.ac.tees.mad.payclock.features.timelog
 
+import android.Manifest
+import android.location.Location
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,37 +42,114 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.location.LocationServices
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
+import java.util.Locale
 
 @Composable
 fun TimeLogScreenRoute(
     navController: NavHostController,
 ) {
+    val context = LocalContext.current
     val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
     val allTimeLogs by timeLogViewModel.allTimeLogs.collectAsState()
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
 
+    // Location client and permission handling (pending callback pattern)
+    val locationClient = LocationServices.getFusedLocationProviderClient(context)
+    val pendingLocationCallback = remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            val callback = pendingLocationCallback.value
+            if (callback == null) return@rememberLauncherForActivityResult
+
+            if (isGranted) {
+                try {
+                    locationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                        if (location != null) {
+                            callback(location.latitude, location.longitude)
+                        } else {
+                            Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                            callback(null, null)
+                        }
+                    }.addOnFailureListener {
+                        Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                        callback(null, null)
+                    }
+                } catch (_: SecurityException) {
+                    callback(null, null)
+                }
+            } else {
+                Toast.makeText(context, "Location permission denied; proceeding without location.", Toast.LENGTH_SHORT).show()
+                callback(null, null)
+            }
+
+            pendingLocationCallback.value = null
+        }
+    )
+
+    fun fetchLocationAndThen(onResult: (lat: Double?, lng: Double?) -> Unit) {
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) {
+            pendingLocationCallback.value = onResult
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+
+        try {
+            locationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                if (location != null) {
+                    onResult(location.latitude, location.longitude)
+                } else {
+                    Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                    onResult(null, null)
+                }
+            }.addOnFailureListener {
+                Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                onResult(null, null)
+            }
+        } catch (_: SecurityException) {
+            onResult(null, null)
+        }
+    }
+
     TimeLogScreen(
         timeLogs = allTimeLogs,
         activeLog = activeTimeLog,
-        onStartTimeLog = { jobId -> timeLogViewModel.startNewShift(jobId) }, // The ViewModel now handles the user ID
-        onEndTimeLog = { timeLogViewModel.endCurrentShift() },
+        onStartTimeLog = { jobId ->
+            fetchLocationAndThen { lat, lng ->
+                timeLogViewModel.startNewShift(jobId, lat, lng)
+            }
+        },
+        onEndTimeLog = {
+            fetchLocationAndThen { lat, lng ->
+                timeLogViewModel.endCurrentShift(lat, lng)
+            }
+        },
         onDeleteTimeLog = { log -> timeLogViewModel.deleteTimeLog(log) },
         navController = navController
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun TimeLogScreen(
     timeLogs: List<TimeLogWithJob>,
@@ -174,7 +258,7 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
 fun formatDuration(durationInMinutes: Long): String {
     val hours = durationInMinutes / 60
     val minutes = durationInMinutes % 60
-    return String.format("%d hours, %d minutes", hours, minutes)
+    return String.format(Locale.US, "%d hours, %d minutes", hours, minutes)
 }
 
 @Composable

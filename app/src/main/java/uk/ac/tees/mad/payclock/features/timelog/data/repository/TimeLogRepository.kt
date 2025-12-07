@@ -68,19 +68,21 @@ class TimeLogRepository(
         logs.find { it.timeLog.endTime == null }
     }
 
-    suspend fun startNewShift(jobId: String) {
+    suspend fun startNewShift(jobId: String, startLat: Double? = null, startLng: Double? = null) {
         val userId = auth.currentUser?.uid ?: return
         if (activeTimeLog.firstOrNull() == null) {
             val newLog = TimeLog(
                 userId = userId,
                 jobId = jobId,
-                startTime = Date()
+                startTime = Date(),
+                startLatitude = startLat,
+                startLongitude = startLng
             )
             firestore.collection("timeLogs").add(newLog)
         }
     }
 
-    suspend fun endCurrentShift() {
+    suspend fun endCurrentShift(endLat: Double? = null, endLng: Double? = null) {
         activeTimeLog.firstOrNull()?.timeLog?.let { log ->
             if (log.id.isNotBlank()) {
                 // End any active break
@@ -103,14 +105,16 @@ class TimeLogRepository(
 
                 val updatedLog = log.copy(
                     endTime = now,
-                    duration = duration
+                    duration = duration,
+                    endLatitude = endLat,
+                    endLongitude = endLng
                 )
                 firestore.collection("timeLogs").document(log.id).set(updatedLog)
             }
         }
     }
 
-    suspend fun deleteTimeLog(timeLog: TimeLog) {
+    fun deleteTimeLog(timeLog: TimeLog) {
         if (timeLog.id.isNotBlank()) {
             firestore.collection("timeLogs").document(timeLog.id).delete()
         }

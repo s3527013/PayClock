@@ -1,5 +1,10 @@
 package uk.ac.tees.mad.payclock.features.timelog
 
+import android.Manifest
+import android.location.Location
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,19 +24,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.google.android.gms.location.LocationServices
+import java.time.Duration
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.delay
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.breaks.BreakViewModel
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
-import java.time.Duration
-import java.util.Date
 
 @Composable
 fun TimeLogControlScreenRoute(
     navController: NavHostController,
 ) {
+    val context = LocalContext.current
     val jobViewModel: JobViewModel = Graph.jobViewModel
     val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
     val breakViewModel: BreakViewModel = Graph.breakViewModel
@@ -39,6 +48,79 @@ fun TimeLogControlScreenRoute(
 
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
     val activeBreak by breakViewModel.activeBreak.collectAsState()
+
+    val locationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    // Pending callback to be invoked once permission result and (optionally) location are available
+    val pendingLocationCallback = remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
+
+    // Permission launcher; when result arrives, we fetch location if granted, otherwise invoke with nulls
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            val callback = pendingLocationCallback.value
+            if (callback == null) return@rememberLauncherForActivityResult
+
+            if (isGranted) {
+                try {
+                    locationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                        if (location != null) {
+                            callback(location.latitude, location.longitude)
+                        } else {
+                            Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                            callback(null, null)
+                        }
+                    }.addOnFailureListener {
+                        Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                        callback(null, null)
+                    }
+                } catch (_: SecurityException) {
+                    // Defensive: permission was reported granted, but still security exception
+                    callback(null, null)
+                }
+            } else {
+                Toast.makeText(context, "Location permission denied; proceeding without location.", Toast.LENGTH_SHORT).show()
+                callback(null, null)
+            }
+
+            // Clear pending callback after invocation
+            pendingLocationCallback.value = null
+        }
+    )
+
+    // Helper to request last known location and call a callback with coords (or nulls)
+    fun fetchLocationAndThen(onResult: (lat: Double?, lng: Double?) -> Unit) {
+        // Check permission; if not granted, request it and store the callback to be invoked later
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) {
+            // Store callback and request permission; when the user responds, permissionLauncher's onResult will run
+            pendingLocationCallback.value = onResult
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+
+        // If we have permission, try to get last location now
+        try {
+            locationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                if (location != null) {
+                    onResult(location.latitude, location.longitude)
+                } else {
+                    Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                    onResult(null, null)
+                }
+            }.addOnFailureListener {
+                Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                onResult(null, null)
+            }
+        } catch (_: SecurityException) {
+            // Shouldn't happen because we checked permissions, but handle defensively
+            onResult(null, null)
+        }
+    }
 
 
     // This is the primary state we care about for this screen
@@ -56,12 +138,18 @@ fun TimeLogControlScreenRoute(
             jobName = currentJob.name,
             startTime = if (isThisJobActive) activeTimeLog?.timeLog?.startTime else null,
             isBreakActive = activeBreak != null,
-            onStartClick = { timeLogViewModel.startNewShift(currentJob.id) },
+            onStartClick = {
+                fetchLocationAndThen { lat, lng ->
+                    timeLogViewModel.startNewShift(currentJob.id, lat, lng)
+                }
+            },
             onStopClick = {
-                timeLogViewModel.endCurrentShift()
-                navController.navigate("jobs") {
-                    popUpTo("jobs") {
-                        inclusive = true
+                fetchLocationAndThen { lat, lng ->
+                    timeLogViewModel.endCurrentShift(lat, lng)
+                    navController.navigate("jobs") {
+                        popUpTo("jobs") {
+                            inclusive = true
+                        }
                     }
                 }
             },
@@ -153,5 +241,5 @@ private fun formatDuration(duration: Duration): String {
     val hours = duration.toHours()
     val minutes = duration.toMinutes() % 60
     val seconds = duration.seconds % 60
-    return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
 }
