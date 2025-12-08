@@ -1,3 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PayClock</string>
+    <!-- Add your Google Geocoding API key here, or leave empty to disable Google geocoding. -->
+    <string name="google_geocoding_api_key">YOUR_API_KEY_HERE</string>
+    <!-- Keep existing app strings in your main strings.xml if present; this file only contains the key placeholder. -->
 </resources>
+

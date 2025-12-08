@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,9 +50,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.core.Graph
+import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
+import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
+import uk.ac.tees.mad.payclock.features.timelog.util.reverseGeocodeWithBigDataCloud
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -66,9 +71,16 @@ fun TimeLogScreenRoute(
     val allTimeLogs by timeLogViewModel.allTimeLogs.collectAsState()
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
 
+    // Collect jobs from Graph.jobViewModel
+    val jobViewModel = Graph.jobViewModel
+    val jobs by jobViewModel.jobs.collectAsState()
+
+    val scope = rememberCoroutineScope()
+
     // Location client and permission handling (pending callback pattern)
     val locationClient = LocationServices.getFusedLocationProviderClient(context)
-    val pendingLocationCallback = remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
+    val pendingLocationCallback =
+        remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -82,18 +94,30 @@ fun TimeLogScreenRoute(
                         if (location != null) {
                             callback(location.latitude, location.longitude)
                         } else {
-                            Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Location unavailable; proceeding without location.",
+                                Toast.LENGTH_SHORT
+                            ).show()
                             callback(null, null)
                         }
                     }.addOnFailureListener {
-                        Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Failed to get location; proceeding without location.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         callback(null, null)
                     }
                 } catch (_: SecurityException) {
                     callback(null, null)
                 }
             } else {
-                Toast.makeText(context, "Location permission denied; proceeding without location.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Location permission denied; proceeding without location.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 callback(null, null)
             }
 
@@ -118,11 +142,19 @@ fun TimeLogScreenRoute(
                 if (location != null) {
                     onResult(location.latitude, location.longitude)
                 } else {
-                    Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Location unavailable; proceeding without location.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     onResult(null, null)
                 }
             }.addOnFailureListener {
-                Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Failed to get location; proceeding without location.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 onResult(null, null)
             }
         } catch (_: SecurityException) {
@@ -133,14 +165,29 @@ fun TimeLogScreenRoute(
     TimeLogScreen(
         timeLogs = allTimeLogs,
         activeLog = activeTimeLog,
+        jobs = jobs,
         onStartTimeLog = { jobId ->
             fetchLocationAndThen { lat, lng ->
-                timeLogViewModel.startNewShift(jobId, lat, lng)
+                if (lat != null && lng != null) {
+                    scope.launch {
+                        val address = reverseGeocodeWithBigDataCloud(context, lat, lng)
+                        timeLogViewModel.startNewShift(jobId, lat, lng, address)
+                    }
+                } else {
+                    timeLogViewModel.startNewShift(jobId, null, null, null)
+                }
             }
         },
         onEndTimeLog = {
             fetchLocationAndThen { lat, lng ->
-                timeLogViewModel.endCurrentShift(lat, lng)
+                if (lat != null && lng != null) {
+                    scope.launch {
+                        val address = reverseGeocodeWithBigDataCloud(context, lat, lng)
+                        timeLogViewModel.endCurrentShift(lat, lng, address)
+                    }
+                } else {
+                    timeLogViewModel.endCurrentShift(null, null, null)
+                }
             }
         },
         onDeleteTimeLog = { log -> timeLogViewModel.deleteTimeLog(log) },
@@ -154,6 +201,7 @@ fun TimeLogScreenRoute(
 fun TimeLogScreen(
     timeLogs: List<TimeLogWithJob>,
     activeLog: TimeLogWithJob?,
+    jobs: List<Job>,
     onStartTimeLog: (String) -> Unit,
     onEndTimeLog: () -> Unit,
     onDeleteTimeLog: (TimeLog) -> Unit,
@@ -190,7 +238,9 @@ fun TimeLogScreen(
                     onTimeLogAdd = {
                         onStartTimeLog(it)
                         showDialog = false
-                    }
+                    },
+                    jobs = jobs,
+                    navController = navController
                 )
             }
             LazyColumn(
@@ -231,9 +281,20 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
                 Text(text = logWithJob.jobName ?: "Unknown Job", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 log.startTime?.let { Text(text = "Started: ${formatter.format(it.toInstant())}") }
+                // Show stored start address if present
+                log.startAddress?.let { addr ->
+                    Text(text = "Start location: $addr", style = MaterialTheme.typography.bodySmall)
+                }
 
                 if (log.endTime != null) {
                     log.endTime?.let { Text(text = "Ended:   ${formatter.format(it.toInstant())}") }
+                    // Show stored end address if present
+                    log.endAddress?.let { addr ->
+                        Text(
+                            text = "End location: $addr",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     log.duration?.let {
                         Text(text = "Duration: ${formatDuration(it)}")
                     }
@@ -262,24 +323,90 @@ fun formatDuration(durationInMinutes: Long): String {
 }
 
 @Composable
-fun AddTimeLogDialog(onDismiss: () -> Unit, onTimeLogAdd: (String) -> Unit) {
-    var jobId by remember { mutableStateOf("") }
+fun AddTimeLogDialog(
+    jobViewModel: JobViewModel = Graph.jobViewModel,
+    onDismiss: () -> Unit,
+    onTimeLogAdd: (String) -> Unit,
+    jobs: List<Job>,
+    navController: NavHostController
+) {
+    var manualJobId by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Start New Shift") },
         text = {
-            OutlinedTextField(
-                value = jobId,
-                onValueChange = { jobId = it },
-                label = { Text("Enter Job ID") },
-                placeholder = { Text("e.g., a-b-c-d") }
-            )
+            Column {
+                if (jobs.isEmpty()) {
+                    Text("No jobs available. Enter Job ID manually.")
+                } else {
+                    Text("Select a job:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .height(300.dp)
+                    ) {
+                        items(jobs) { job ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        // Make the selected job active, start the shift, then navigate to control
+                                        jobViewModel.setActiveJob(job)
+                                        onTimeLogAdd(job.id)
+                                        onDismiss()
+                                        navController.navigate("time_log_control")
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Text(text = job.name, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = job.id,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Or enter job ID manually:")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = manualJobId,
+                    onValueChange = { manualJobId = it },
+                    label = { Text("Job ID") },
+                    placeholder = { Text("e.g., a-b-c-d") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
             Button(
-                onClick = { onTimeLogAdd(jobId) },
-                enabled = jobId.isNotBlank()
+                onClick = {
+                    if (manualJobId.isNotBlank()) {
+                        // Try to resolve manual ID to an existing job
+                        val found = jobs.firstOrNull { it.id == manualJobId }
+                        if (found != null) {
+                            jobViewModel.setActiveJob(found)
+                            onTimeLogAdd(manualJobId)
+                            onDismiss()
+                            navController.navigate("time_log_control")
+                        } else {
+                            // If not found, inform the user (they may need to create the job first)
+                            Toast.makeText(context, "Job not found. Please create the job first.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                enabled = manualJobId.isNotBlank()
             ) {
                 Text("Start")
             }
@@ -321,9 +448,15 @@ fun TimeLogScreenPreview() {
         )
     )
 
+    val sampleJobs = listOf(
+        Job(id = "1", userId = "1", name = "Android Developer", hourlyRate = 20.0),
+        Job(id = "2", userId = "1", name = "UX Designer", hourlyRate = 18.0)
+    )
+
     TimeLogScreen(
         timeLogs = sampleLogs,
         activeLog = sampleLogs.first { it.timeLog.endTime == null },
+        jobs = sampleJobs,
         onStartTimeLog = {},
         onEndTimeLog = {},
         onDeleteTimeLog = {},

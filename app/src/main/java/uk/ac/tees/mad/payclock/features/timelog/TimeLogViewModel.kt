@@ -26,15 +26,15 @@ class TimeLogViewModel(
         initialValue = null
     )
 
-    fun startNewShift(jobId: String, startLat: Double? = null, startLng: Double? = null) {
+    fun startNewShift(jobId: String, startLat: Double? = null, startLng: Double? = null, startAddress: String? = null) {
         viewModelScope.launch {
-            timeLogRepository.startNewShift(jobId, startLat, startLng)
+            timeLogRepository.startNewShift(jobId, startLat, startLng, startAddress)
         }
     }
 
-    fun endCurrentShift(endLat: Double? = null, endLng: Double? = null) {
+    fun endCurrentShift(endLat: Double? = null, endLng: Double? = null, endAddress: String? = null) {
         viewModelScope.launch {
-            timeLogRepository.endCurrentShift(endLat, endLng)
+            timeLogRepository.endCurrentShift(endLat, endLng, endAddress)
         }
     }
 

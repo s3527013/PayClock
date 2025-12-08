@@ -21,4 +21,7 @@ data class TimeLog(
     val startLongitude: Double? = null,
     var endLatitude: Double? = null,
     var endLongitude: Double? = null,
+    // New address fields
+    val startAddress: String? = null,
+    var endAddress: String? = null,
 )
