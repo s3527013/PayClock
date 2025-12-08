@@ -21,7 +21,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,11 +32,9 @@ import java.time.Duration
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.breaks.BreakViewModel
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
-import uk.ac.tees.mad.payclock.features.timelog.util.reverseGeocodeWithBigDataCloud
 
 @Composable
 fun TimeLogControlScreenRoute(
@@ -52,12 +49,10 @@ fun TimeLogControlScreenRoute(
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
     val activeBreak by breakViewModel.activeBreak.collectAsState()
 
-    val scope = rememberCoroutineScope()
     val locationClient = LocationServices.getFusedLocationProviderClient(context)
 
     // Pending callback to be invoked once permission result and (optionally) location are available
-    val pendingLocationCallback =
-        remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
+    val pendingLocationCallback = remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
 
     // Permission launcher; when result arrives, we fetch location if granted, otherwise invoke with nulls
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -72,19 +67,11 @@ fun TimeLogControlScreenRoute(
                         if (location != null) {
                             callback(location.latitude, location.longitude)
                         } else {
-                            Toast.makeText(
-                                context,
-                                "Location unavailable; proceeding without location.",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
                             callback(null, null)
                         }
                     }.addOnFailureListener {
-                        Toast.makeText(
-                            context,
-                            "Failed to get location; proceeding without location.",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
                         callback(null, null)
                     }
                 } catch (_: SecurityException) {
@@ -92,11 +79,7 @@ fun TimeLogControlScreenRoute(
                     callback(null, null)
                 }
             } else {
-                Toast.makeText(
-                    context,
-                    "Location permission denied; proceeding without location.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Location permission denied; proceeding without location.", Toast.LENGTH_SHORT).show()
                 callback(null, null)
             }
 
@@ -126,19 +109,11 @@ fun TimeLogControlScreenRoute(
                 if (location != null) {
                     onResult(location.latitude, location.longitude)
                 } else {
-                    Toast.makeText(
-                        context,
-                        "Location unavailable; proceeding without location.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(context, "Location unavailable; proceeding without location.", Toast.LENGTH_SHORT).show()
                     onResult(null, null)
                 }
             }.addOnFailureListener {
-                Toast.makeText(
-                    context,
-                    "Failed to get location; proceeding without location.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Failed to get location; proceeding without location.", Toast.LENGTH_SHORT).show()
                 onResult(null, null)
             }
         } catch (_: SecurityException) {
@@ -165,35 +140,15 @@ fun TimeLogControlScreenRoute(
             isBreakActive = activeBreak != null,
             onStartClick = {
                 fetchLocationAndThen { lat, lng ->
-                    if (lat != null && lng != null) {
-                        scope.launch {
-                            val address = reverseGeocodeWithBigDataCloud(context, lat, lng)
-                            timeLogViewModel.startNewShift(currentJob.id, lat, lng, address)
-                        }
-                    } else {
-                        timeLogViewModel.startNewShift(currentJob.id, null, null, null)
-                    }
+                    timeLogViewModel.startNewShift(currentJob.id, lat, lng)
                 }
             },
             onStopClick = {
                 fetchLocationAndThen { lat, lng ->
-                    if (lat != null && lng != null) {
-                        scope.launch {
-                            val address = reverseGeocodeWithBigDataCloud(context, lat, lng)
-                            jobViewModel.resetActiveJob()
-                            timeLogViewModel.endCurrentShift(lat, lng, address)
-                            navController.navigate("jobs") {
-                                popUpTo("jobs") {
-                                    inclusive = true
-                                }
-                            }
-                        }
-                    } else {
-                        timeLogViewModel.endCurrentShift(null, null, null)
-                        navController.navigate("jobs") {
-                            popUpTo("jobs") {
-                                inclusive = true
-                            }
+                    timeLogViewModel.endCurrentShift(lat, lng)
+                    navController.navigate("jobs") {
+                        popUpTo("jobs") {
+                            inclusive = true
                         }
                     }
                 }

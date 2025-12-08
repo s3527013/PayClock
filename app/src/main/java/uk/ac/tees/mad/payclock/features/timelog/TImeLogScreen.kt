@@ -3,10 +3,12 @@
 package uk.ac.tees.mad.payclock.features.timelog
 
 import android.Manifest
+import android.app.DatePickerDialog
 import android.location.Location
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,19 +21,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -51,16 +61,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import uk.ac.tees.mad.payclock.features.timelog.util.reverseGeocodeWithBigDataCloud
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun TimeLogScreenRoute(
@@ -68,12 +79,11 @@ fun TimeLogScreenRoute(
 ) {
     val context = LocalContext.current
     val timeLogViewModel: TimeLogViewModel = Graph.timeLogViewModel
-    val allTimeLogs by timeLogViewModel.allTimeLogs.collectAsState()
     val activeTimeLog by timeLogViewModel.activeTimeLog.collectAsState()
-
-    // Collect jobs from Graph.jobViewModel
-    val jobViewModel = Graph.jobViewModel
-    val jobs by jobViewModel.jobs.collectAsState()
+    val jobsViewModel = Graph.jobViewModel
+    val jobs by jobsViewModel.jobs.collectAsState()
+    val filteredLogs by timeLogViewModel.filteredTimeLogs.collectAsState()
+    val selectedJobId by timeLogViewModel.selectedJobId.collectAsState()
 
     val scope = rememberCoroutineScope()
 
@@ -163,7 +173,7 @@ fun TimeLogScreenRoute(
     }
 
     TimeLogScreen(
-        timeLogs = allTimeLogs,
+        timeLogs = filteredLogs,
         activeLog = activeTimeLog,
         jobs = jobs,
         onStartTimeLog = { jobId ->
@@ -186,17 +196,23 @@ fun TimeLogScreenRoute(
                         timeLogViewModel.endCurrentShift(lat, lng, address)
                     }
                 } else {
-                    timeLogViewModel.endCurrentShift(null, null, null)
+                    timeLogViewModel.endCurrentShift(null, null)
                 }
             }
         },
         onDeleteTimeLog = { log -> timeLogViewModel.deleteTimeLog(log) },
-        navController = navController
+        navController = navController,
+        onApplyFilter = { startMillis, endMillis, jobId ->
+            timeLogViewModel.setDateRangeMillis(startMillis, endMillis)
+            timeLogViewModel.selectJob(jobId)
+        },
+        onClearFilter = { timeLogViewModel.clearFilters() },
+        selectedJobId = selectedJobId
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("UNUSED_PARAMETER")
+@Suppress("UNUSED_PARAMETER", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @Composable
 fun TimeLogScreen(
     timeLogs: List<TimeLogWithJob>,
@@ -206,8 +222,40 @@ fun TimeLogScreen(
     onEndTimeLog: () -> Unit,
     onDeleteTimeLog: (TimeLog) -> Unit,
     navController: NavHostController,
+    onApplyFilter: (startMillis: Long?, endMillis: Long?, jobId: String?) -> Unit,
+    onClearFilter: () -> Unit,
+    selectedJobId: String?,
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val showDialogState = remember { mutableStateOf(false) }
+    // Job filter
+    var jobMenuExpanded by remember { mutableStateOf(false) }
+
+    // Date range filter stored as java.util.Date?
+    var startDate by remember { mutableStateOf<Date?>(null) }
+    var endDate by remember { mutableStateOf<Date?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun startOfDayMillis(date: Date): Long {
+        val cal = Calendar.getInstance()
+        cal.time = date
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    fun endOfDayMillis(date: Date): Long {
+        val cal = Calendar.getInstance()
+        cal.time = date
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
+    }
 
     Scaffold(
         topBar = {
@@ -221,7 +269,7 @@ fun TimeLogScreen(
         },
         floatingActionButton = {
             if (activeLog == null) {
-                FloatingActionButton(onClick = { showDialog = true }) {
+                FloatingActionButton(onClick = { showDialogState.value = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Start New Shift")
                 }
             }
@@ -232,26 +280,202 @@ fun TimeLogScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (showDialog) {
+            // Job filter + Date range filter UI using Material pickers
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)) {
+                // Job dropdown
+                val jobName = selectedJobId?.let { id -> jobs.firstOrNull { it.id == id }?.name }
+                    ?: "All jobs"
+                ExposedDropdownMenuBox(
+                    expanded = jobMenuExpanded,
+                    onExpandedChange = { jobMenuExpanded = it }
+                ) {
+                    TextField(
+                        value = jobName,
+                        onValueChange = {},
+                        label = { Text("Filter by job") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = jobMenuExpanded) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DropdownMenu(
+                        expanded = jobMenuExpanded,
+                        onDismissRequest = { jobMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(text = { Text("All jobs") }, onClick = {
+                            onClearFilter()
+                            jobMenuExpanded = false
+                        })
+                        jobs.forEach { job ->
+                            DropdownMenuItem(text = { Text(job.name) }, onClick = {
+                                onApplyFilter(null, null, job.id)
+                                jobMenuExpanded = false
+                            })
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Start date display (read-only) with calendar picker
+                    val startText = startDate?.let { DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(it.time)) } ?: ""
+                    OutlinedTextField(
+                        value = startText,
+                        onValueChange = {},
+                        label = { Text("Start date") },
+                        singleLine = true,
+                        readOnly = true,
+                        modifier = Modifier.weight(1f).clickable {
+                            // open DatePickerDialog
+                            val cal = Calendar.getInstance()
+                            startDate?.let { cal.time = it }
+                            DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val picked = Calendar.getInstance()
+                                    picked.set(y, m, d, 0, 0, 0)
+                                    picked.set(Calendar.MILLISECOND, 0)
+                                    startDate = picked.time
+                                },
+                                cal.get(Calendar.YEAR),
+                                cal.get(Calendar.MONTH),
+                                cal.get(Calendar.DAY_OF_MONTH)
+                            ).show()
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                val cal = Calendar.getInstance()
+                                startDate?.let { cal.time = it }
+                                DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        val picked = Calendar.getInstance()
+                                        picked.set(y, m, d, 0, 0, 0)
+                                        picked.set(Calendar.MILLISECOND, 0)
+                                        startDate = picked.time
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick start date")
+                            }
+                        }
+                    )
+
+                    // End date display (read-only) with calendar picker
+                    val endText = endDate?.let { DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(it.time)) } ?: ""
+                    OutlinedTextField(
+                        value = endText,
+                        onValueChange = {},
+                        label = { Text("End date") },
+                        singleLine = true,
+                        readOnly = true,
+                        modifier = Modifier.weight(1f).clickable {
+                            val cal = Calendar.getInstance()
+                            endDate?.let { cal.time = it }
+                            DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val picked = Calendar.getInstance()
+                                    picked.set(y, m, d, 0, 0, 0)
+                                    picked.set(Calendar.MILLISECOND, 0)
+                                    endDate = picked.time
+                                },
+                                cal.get(Calendar.YEAR),
+                                cal.get(Calendar.MONTH),
+                                cal.get(Calendar.DAY_OF_MONTH)
+                            ).show()
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                val cal = Calendar.getInstance()
+                                endDate?.let { cal.time = it }
+                                DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        val picked = Calendar.getInstance()
+                                        picked.set(y, m, d, 0, 0, 0)
+                                        picked.set(Calendar.MILLISECOND, 0)
+                                        endDate = picked.time
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick end date")
+                            }
+                        }
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Button(onClick = {
+                        // Validate presence/ordering
+                        if (startDate != null && endDate != null && startDate!!.time > endDate!!.time) {
+                            scope.launch { snackbarHostState.showSnackbar("Start date must be before or equal to end date") }
+                            return@Button
+                        }
+
+                        val startMillis = startDate?.let { startOfDayMillis(it) }
+                        val endMillis = endDate?.let { endOfDayMillis(it) }
+                        // Tell the ViewModel/Repository to apply the filters
+                        onApplyFilter(startMillis, endMillis, null)
+                        scope.launch { snackbarHostState.showSnackbar("Filter applied") }
+                    }) {
+                        Text("Apply")
+                    }
+
+                    Button(onClick = {
+                        startDate = null
+                        endDate = null
+                        onClearFilter()
+                    }) {
+                        Text("Clear")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            if (showDialogState.value) {
                 AddTimeLogDialog(
-                    onDismiss = { showDialog = false },
+                    onDismiss = { showDialogState.value = false },
                     onTimeLogAdd = {
                         onStartTimeLog(it)
-                        showDialog = false
+                        showDialogState.value = false
                     },
                     jobs = jobs,
                     navController = navController
                 )
             }
-            LazyColumn(
+            // Scaffold hosts the snackbar
+            Scaffold(
+                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                 modifier = Modifier.fillMaxSize()
-            ) {
-                items(timeLogs) { logWithJob ->
-                    TimeLogItem(
-                        logWithJob = logWithJob,
-                        onDelete = { onDeleteTimeLog(logWithJob.timeLog) },
-                        onEndShift = { onEndTimeLog() }
-                    )
+            ) { innerPadding ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    items(timeLogs) { logWithJob ->
+                        TimeLogItem(
+                            logWithJob = logWithJob,
+                            onDelete = { onDeleteTimeLog(logWithJob.timeLog) },
+                            onEndShift = { onEndTimeLog() }
+                        )
+                    }
                 }
             }
         }
@@ -267,19 +491,19 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = logWithJob.jobName ?: "Unknown Job", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 log.startTime?.let { Text(text = "Started: ${formatter.format(it.toInstant())}") }
                 // Show stored start address if present
                 log.startAddress?.let { addr ->
@@ -342,16 +566,16 @@ fun AddTimeLogDialog(
                     Text("No jobs available. Enter Job ID manually.")
                 } else {
                     Text("Select a job:")
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     LazyColumn(
                         modifier = Modifier
-                            .height(300.dp)
+                            .height(150.dp)
                     ) {
                         items(jobs) { job ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
+                                    .padding(vertical = 4.dp)
                             ) {
                                 Button(
                                     onClick = {
@@ -376,9 +600,9 @@ fun AddTimeLogDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text("Or enter job ID manually:")
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = manualJobId,
                     onValueChange = { manualJobId = it },
@@ -402,7 +626,11 @@ fun AddTimeLogDialog(
                             navController.navigate("time_log_control")
                         } else {
                             // If not found, inform the user (they may need to create the job first)
-                            Toast.makeText(context, "Job not found. Please create the job first.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Job not found. Please create the job first.",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 },
@@ -460,6 +688,9 @@ fun TimeLogScreenPreview() {
         onStartTimeLog = {},
         onEndTimeLog = {},
         onDeleteTimeLog = {},
-        navController = navController
+        navController = navController,
+        onApplyFilter = { _, _, _ -> },
+        onClearFilter = {},
+        selectedJobId = null
     )
 }

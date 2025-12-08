@@ -112,12 +112,10 @@ fun PayClockApp() {
                                                 Icons.Filled.Home,
                                                 contentDescription = null
                                             )
-
                                             "time_log" -> Icon(
                                                 Icons.AutoMirrored.Filled.List,
                                                 contentDescription = null
                                             )
-
                                             "reports" -> Icon(
                                                 Icons.Filled.Assessment,
                                                 contentDescription = null
