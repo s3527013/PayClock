@@ -1,5 +1,7 @@
 package uk.ac.tees.mad.payclock.features.auth
 
+import android.net.Uri
+import androidx.core.net.toUri
 import androidx.credentials.Credential
 import androidx.credentials.CustomCredential
 import androidx.credentials.PasswordCredential
@@ -10,7 +12,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.auth.auth
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -49,8 +53,12 @@ class AuthRepository {
                 is CustomCredential -> {
                     if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                         try {
-                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                            val firebaseCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+                            val googleIdTokenCredential =
+                                GoogleIdTokenCredential.createFrom(credential.data)
+                            val firebaseCredential = GoogleAuthProvider.getCredential(
+                                googleIdTokenCredential.idToken,
+                                null
+                            )
                             firebaseAuth.signInWithCredential(firebaseCredential).await()
                             Result.success(Unit)
                         } catch (e: GoogleIdTokenParsingException) {
@@ -60,6 +68,7 @@ class AuthRepository {
                         Result.failure(Exception("Unexpected custom credential type: ${credential.type}"))
                     }
                 }
+
                 is PasswordCredential, is PublicKeyCredential -> Result.failure(Exception("Unsupported credential type."))
                 else -> Result.failure(Exception("Unexpected credential type."))
             }
@@ -105,5 +114,33 @@ class AuthRepository {
      */
     fun getCurrentUserId(): String? {
         return firebaseAuth.currentUser?.uid
+    }
+
+    /**
+     * Uploads a profile image to Firebase Storage and sets the user's photoURL.
+     * Returns the download URL on success.
+     */
+    suspend fun updateProfilePicture(imageUri: Uri): Result<String> {
+        try {
+            val user =
+                firebaseAuth.currentUser ?: return Result.failure(Exception("User not signed in"))
+            val uid = user.uid
+            // Upload path aligned with Storage rules: profile_images/{uid}/{uid}.jpg
+            val storageRef =
+                FirebaseStorage.getInstance().reference.child("profile_images/$uid/$uid.jpg")
+
+            // Upload the file with metadata
+            storageRef.putFile(imageUri).await()
+            // Get download URL
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+            // Update user profile
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setPhotoUri(downloadUrl.toUri())
+                .build()
+            user.updateProfile(profileUpdates).await()
+            return Result.success(downloadUrl)
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
     }
 }
