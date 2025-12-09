@@ -43,6 +43,7 @@ import uk.ac.tees.mad.payclock.features.auth.SignUpScreen
 import uk.ac.tees.mad.payclock.features.auth.SplashScreen
 import uk.ac.tees.mad.payclock.features.jobs.JobScreenRoute
 import uk.ac.tees.mad.payclock.features.report.ReportScreenRoute
+import uk.ac.tees.mad.payclock.features.settings.SettingsScreen
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogControlScreenRoute
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogScreenRoute
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
@@ -171,6 +172,9 @@ fun PayClockApp() {
                     }
                     composable(route = "reports") {
                         ReportScreenRoute(navController = navController)
+                    }
+                    composable(route = "settings") {
+                        SettingsScreen(navController = navController)
                     }
                 }
             }

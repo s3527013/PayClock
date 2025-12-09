@@ -143,4 +143,19 @@ class AuthRepository {
             return Result.failure(e)
         }
     }
+
+    suspend fun updateDisplayName(newName: String): Result<Unit> {
+        return try {
+            val user =
+                firebaseAuth.currentUser ?: return Result.failure(Exception("User not logged in"))
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(newName)
+                .build()
+            user.updateProfile(profileUpdates)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

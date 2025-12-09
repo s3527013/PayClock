@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Photo // Import the Photo icon
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.HorizontalDivider
@@ -52,12 +52,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import java.io.File
-import java.io.FileOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.R
 import uk.ac.tees.mad.payclock.features.auth.AuthViewModel
+import java.io.File
+import java.io.FileOutputStream
 
 // Helper function to save Bitmap to cache
 fun saveBitmapToCache(ctx: Context, bitmap: Bitmap): Uri? {
@@ -86,7 +86,7 @@ fun AppDrawer(
     val context = LocalContext.current
 
     // State to hold the URI of the captured image or selected image
-    var imageUri: Uri? by remember { mutableStateOf<Uri?>(null) }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Effect to update imageUri when user's photoUrl changes
     LaunchedEffect(user?.photoUrl) {
@@ -226,7 +226,7 @@ fun AppDrawer(
             selected = false,
             onClick = {
                 scope.launch { drawerState.close() }
-                // navController.navigate("settings")
+                navController.navigate("settings") // Navigate to the settings route
             },
             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
         )

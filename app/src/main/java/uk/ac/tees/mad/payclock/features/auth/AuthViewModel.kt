@@ -40,6 +40,12 @@ class AuthViewModel(
             callback(result)
         }
     }
+
+    fun updateDisplayName(newName: String) {
+        viewModelScope.launch {
+            repository.updateDisplayName(newName)
+        }
+    }
 }
 
 sealed class AuthState {
