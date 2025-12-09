@@ -35,6 +35,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,20 +86,29 @@ fun AppDrawer(
     val context = LocalContext.current
 
     // State to hold the URI of the captured image or selected image
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageUri: Uri? by remember { mutableStateOf<Uri?>(null) }
+
+    // Effect to update imageUri when user's photoUrl changes
+    LaunchedEffect(user?.photoUrl) {
+        user?.photoUrl?.let {
+            imageUri = it
+        }
+    }
 
     // Image picker launcher (gallery)
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
-            imageUri = uri
+            imageUri = uri // Update local state immediately
             uri?.let {
-                authViewModel.updateProfilePicture(it) { result ->
+                authViewModel.updateProfilePicture(it) { result -> // Convert Uri to String here
                     localScope.launch {
                         if (result.isSuccess) {
                             snackbarHostState.showSnackbar("Profile picture updated")
                         } else {
                             handleUploadError(result.exceptionOrNull(), snackbarHostState)
+                            // If upload fails, revert imageUri to the last known good state (optional)
+                            // For simplicity, we are not reverting here, but you could store the previous URI.
                         }
                     }
                 }
@@ -111,22 +121,22 @@ fun AppDrawer(
         contract = ActivityResultContracts.TakePicturePreview(),
         onResult = {
             // This callback receives a Bitmap directly
-            it?.let {
-                bitmap ->
+            it?.let { bitmap ->
                 val tempUri = saveBitmapToCache(context, bitmap)
                 imageUri = tempUri // Update imageUri state with the cached image
-                tempUri?.let {
-                    uri ->
-                    authViewModel.updateProfilePicture(uri) { result ->
+                tempUri?.let { uri ->
+                    authViewModel.updateProfilePicture(uri) { result -> // Convert Uri to String here
                         localScope.launch {
                             if (result.isSuccess) {
                                 snackbarHostState.showSnackbar("Profile picture updated")
                             } else {
                                 handleUploadError(result.exceptionOrNull(), snackbarHostState)
+                                // If upload fails, revert imageUri to the last known good state (optional)
                             }
                         }
                     }
-                } ?: localScope.launch { snackbarHostState.showSnackbar("Failed to prepare captured image") }
+                }
+                    ?: localScope.launch { snackbarHostState.showSnackbar("Failed to prepare captured image") }
             }
         }
     )
@@ -157,7 +167,12 @@ fun AppDrawer(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            val currentPhotoUrl = user?.photoUrl ?: imageUri // Use the latest URI if available
+            // Use imageUri which is updated by LaunchedEffect or picker/camera result
+            // Convert Uri to String for AsyncImage if imageUri is a Uri
+            val currentPhotoUrl = when (imageUri) {
+                is Uri -> imageUri.toString()
+                else -> user?.photoUrl // Fallback to user's photoUrl (String?)
+            }
 
             AsyncImage(
                 model = currentPhotoUrl,
@@ -172,7 +187,10 @@ fun AppDrawer(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = {
                     val cameraPermissionStatus = ContextCompat.checkSelfPermission(
                         context,
@@ -187,7 +205,10 @@ fun AppDrawer(
                     Icon(Icons.Default.CameraAlt, contentDescription = "Take photo")
                 }
                 IconButton(onClick = { pickImageLauncher.launch("image/*") }) {
-                    Icon(Icons.Default.Photo, contentDescription = "Choose from gallery") // Using Material 3 Photo icon
+                    Icon(
+                        Icons.Default.Photo,
+                        contentDescription = "Choose from gallery"
+                    ) // Using Material 3 Photo icon
                 }
             }
 
