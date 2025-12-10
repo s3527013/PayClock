@@ -119,7 +119,8 @@ fun FilterControls(
             )
             ExposedDropdownMenu(
                 expanded = jobMenuExpanded,
-                onDismissRequest = { jobMenuExpanded = false }) {
+                onDismissRequest = { jobMenuExpanded = false }
+            ) {
                 DropdownMenuItem(text = { Text("All Jobs") }, onClick = {
                     onJobSelected(null)
                     jobMenuExpanded = false

@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+    implementation(libs.androidx.material3)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Coil for AsyncImage

@@ -11,22 +11,30 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,13 +45,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -72,6 +83,8 @@ import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import uk.ac.tees.mad.payclock.features.timelog.util.reverseGeocodeWithBigDataCloud
+import java.time.Instant
+import java.time.LocalDate
 
 @Composable
 fun TimeLogScreenRoute(
@@ -83,8 +96,6 @@ fun TimeLogScreenRoute(
     val jobsViewModel = Graph.jobViewModel
     val jobs by jobsViewModel.jobs.collectAsState()
     val filteredLogs by timeLogViewModel.filteredTimeLogs.collectAsState()
-    val selectedJobId by timeLogViewModel.selectedJobId.collectAsState()
-
     val scope = rememberCoroutineScope()
 
     // Location client and permission handling (pending callback pattern)
@@ -202,12 +213,6 @@ fun TimeLogScreenRoute(
         },
         onDeleteTimeLog = { log -> timeLogViewModel.deleteTimeLog(log) },
         navController = navController,
-        onApplyFilter = { startMillis, endMillis, jobId ->
-            timeLogViewModel.setDateRangeMillis(startMillis, endMillis)
-            timeLogViewModel.selectJob(jobId)
-        },
-        onClearFilter = { timeLogViewModel.clearFilters() },
-        selectedJobId = selectedJobId
     )
 }
 
@@ -222,39 +227,119 @@ fun TimeLogScreen(
     onEndTimeLog: () -> Unit,
     onDeleteTimeLog: (TimeLog) -> Unit,
     navController: NavHostController,
-    onApplyFilter: (startMillis: Long?, endMillis: Long?, jobId: String?) -> Unit,
-    onClearFilter: () -> Unit,
-    selectedJobId: String?,
 ) {
-    val context = LocalContext.current
     val showDialogState = remember { mutableStateOf(false) }
-    // Job filter
-    var jobMenuExpanded by remember { mutableStateOf(false) }
+    val showStartDatePicker = remember { mutableStateOf(false) }
+    val showEndDatePicker = remember { mutableStateOf(false) }
 
-    // Date range filter stored as java.util.Date?
-    var startDate by remember { mutableStateOf<Date?>(null) }
-    var endDate by remember { mutableStateOf<Date?>(null) }
+    // Date range filter state
+    var startDateInput by remember { mutableStateOf("") }
+    var endDateInput by remember { mutableStateOf("") }
+
+    // Selected dates for DatePicker
+    var selectedStartDate by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedEndDate by remember { mutableStateOf<LocalDate?>(null) }
+
+    // Track if we should apply filters
+    var filtersActive by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    fun startOfDayMillis(date: Date): Long {
-        val cal = Calendar.getInstance()
-        cal.time = date
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
+    // Date formatters
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val displayFormatter = DateTimeFormatter.ofPattern("dd/MM HH:mm")
+
+    // Helper function to convert LocalDate to milliseconds
+    fun localDateToMillis(ld: LocalDate, startOfDay: Boolean): Long {
+        val z = ZoneId.systemDefault()
+        return if (startOfDay) {
+            ld.atStartOfDay(z).toInstant().toEpochMilli()
+        } else {
+            ld.plusDays(1).atStartOfDay(z).toInstant().toEpochMilli()
+        }
     }
 
-    fun endOfDayMillis(date: Date): Long {
-        val cal = Calendar.getInstance()
-        cal.time = date
-        cal.set(Calendar.HOUR_OF_DAY, 23)
-        cal.set(Calendar.MINUTE, 59)
-        cal.set(Calendar.SECOND, 59)
-        cal.set(Calendar.MILLISECOND, 999)
-        return cal.timeInMillis
+    // Function to apply filters
+    fun applyFilters() {
+        try {
+            // Use the selected dates directly
+            val startDate = selectedStartDate
+            val endDate = selectedEndDate
+
+            // Update the text inputs based on selected dates
+            startDateInput = startDate?.format(dateFormatter) ?: ""
+            endDateInput = endDate?.format(dateFormatter) ?: ""
+
+            // Validate date range
+            if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Start date must be before end date")
+                }
+                filtersActive = false
+                return
+            }
+
+            filtersActive = startDate != null || endDate != null
+
+            // Show matched count
+            if (filtersActive) {
+                val matched = timeLogs.count { tlw ->
+                    val startTimeMillis = tlw.timeLog.startTime?.time ?: return@count false
+                    val afterStart = startDate?.let { startTimeMillis >= localDateToMillis(it, true) } ?: true
+                    val beforeEnd = endDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
+                    afterStart && beforeEnd
+                }
+                scope.launch {
+                    snackbarHostState.showSnackbar("$matched logs matched")
+                }
+            }
+        } catch (e: Exception) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Invalid date format")
+            }
+            filtersActive = false
+        }
+    }
+
+    // Function to clear filters
+    fun clearFilters() {
+        startDateInput = ""
+        endDateInput = ""
+        selectedStartDate = null
+        selectedEndDate = null
+        filtersActive = false
+        scope.launch {
+            snackbarHostState.showSnackbar("Filters cleared")
+        }
+    }
+
+    // Function to handle date selection
+    fun onStartDateSelected(date: LocalDate) {
+        selectedStartDate = date
+        showStartDatePicker.value = false
+        applyFilters()
+    }
+
+    fun onEndDateSelected(date: LocalDate) {
+        selectedEndDate = date
+        showEndDatePicker.value = false
+        applyFilters()
+    }
+
+    // Filter logs
+    val displayedLogs = remember(timeLogs, selectedStartDate, selectedEndDate, filtersActive) {
+        if (!filtersActive) {
+            timeLogs
+        } else {
+            timeLogs.filter { tlw ->
+                val startTimeMillis = tlw.timeLog.startTime?.time ?: return@filter false
+                val afterStart = selectedStartDate?.let { startTimeMillis >= localDateToMillis(it, true) } ?: true
+                val beforeEnd = selectedEndDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
+                afterStart && beforeEnd
+            }
+        }
     }
 
     Scaffold(
@@ -273,213 +358,363 @@ fun TimeLogScreen(
                     Icon(Icons.Default.Add, contentDescription = "Start New Shift")
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Job filter + Date range filter UI using Material pickers
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)) {
-                // Job dropdown
-                val jobName = selectedJobId?.let { id -> jobs.firstOrNull { it.id == id }?.name }
-                    ?: "All jobs"
-                ExposedDropdownMenuBox(
-                    expanded = jobMenuExpanded,
-                    onExpandedChange = { jobMenuExpanded = it }
+            // Filter controls
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    TextField(
-                        value = jobName,
-                        onValueChange = {},
-                        label = { Text("Filter by job") },
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = jobMenuExpanded) },
+                    Text(
+                        text = "Filter by Date",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Date inputs side by side
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
-                    )
-                    DropdownMenu(
-                        expanded = jobMenuExpanded,
-                        onDismissRequest = { jobMenuExpanded = false }
                     ) {
-                        DropdownMenuItem(text = { Text("All jobs") }, onClick = {
-                            onClearFilter()
-                            jobMenuExpanded = false
-                        })
-                        jobs.forEach { job ->
-                            DropdownMenuItem(text = { Text(job.name) }, onClick = {
-                                onApplyFilter(null, null, job.id)
-                                jobMenuExpanded = false
-                            })
+                        // Start Date Field
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = startDateInput,
+                                onValueChange = {
+                                    // Don't allow manual editing, only through date picker
+                                },
+                                label = { Text("Start Date") },
+                                placeholder = { Text("Select start date") },
+                                singleLine = true,
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = { showStartDatePicker.value = true }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarToday,
+                                            contentDescription = "Pick Start Date"
+                                        )
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Text(
+                                text = "Tap to select",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
+                        }
+
+                        // End Date Field
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = endDateInput,
+                                onValueChange = {
+                                    // Don't allow manual editing, only through date picker
+                                },
+                                label = { Text("End Date") },
+                                placeholder = { Text("Select end date") },
+                                singleLine = true,
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = { showEndDatePicker.value = true }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarToday,
+                                            contentDescription = "Pick End Date"
+                                        )
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Text(
+                                text = "Tap to select",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Filter action buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = ::clearFilters,
+                            enabled = filtersActive,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Clear Filters")
+                        }
+
+                        Button(
+                            onClick = ::applyFilters,
+                            enabled = selectedStartDate != null || selectedEndDate != null,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Apply Filters")
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(4.dp))
+            // Current shift indicator
+            activeLog?.let { log ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessTime,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = "Currently Clocked In",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
 
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Column {
+                            Text(
+                                text = "Job: ${log.jobName ?: "Unknown"}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Started: ${displayFormatter.format(log.timeLog.startTime!!.toInstant())}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            log.timeLog.startAddress?.let { addr ->
+                                Text(
+                                    text = "Location: ${addr.take(40)}${if (addr.length > 40) "..." else ""}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(
+                            onClick = onEndTimeLog,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            )
+                        ) {
+                            Text("End Shift")
+                        }
+                    }
+                }
+            }
+
+            // Time logs list header
+            if (displayedLogs.isNotEmpty()) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Start date display (read-only) with calendar picker
-                    val startText = startDate?.let { DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(it.time)) } ?: ""
-                    OutlinedTextField(
-                        value = startText,
-                        onValueChange = {},
-                        label = { Text("Start date") },
-                        singleLine = true,
-                        readOnly = true,
-                        modifier = Modifier.weight(1f).clickable {
-                            // open DatePickerDialog
-                            val cal = Calendar.getInstance()
-                            startDate?.let { cal.time = it }
-                            DatePickerDialog(
-                                context,
-                                { _, y, m, d ->
-                                    val picked = Calendar.getInstance()
-                                    picked.set(y, m, d, 0, 0, 0)
-                                    picked.set(Calendar.MILLISECOND, 0)
-                                    startDate = picked.time
-                                },
-                                cal.get(Calendar.YEAR),
-                                cal.get(Calendar.MONTH),
-                                cal.get(Calendar.DAY_OF_MONTH)
-                            ).show()
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = {
-                                val cal = Calendar.getInstance()
-                                startDate?.let { cal.time = it }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val picked = Calendar.getInstance()
-                                        picked.set(y, m, d, 0, 0, 0)
-                                        picked.set(Calendar.MILLISECOND, 0)
-                                        startDate = picked.time
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick start date")
-                            }
-                        }
+                    Text(
+                        text = if (filtersActive) "Filtered Logs" else "All Time Logs",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
 
-                    // End date display (read-only) with calendar picker
-                    val endText = endDate?.let { DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(it.time)) } ?: ""
-                    OutlinedTextField(
-                        value = endText,
-                        onValueChange = {},
-                        label = { Text("End date") },
-                        singleLine = true,
-                        readOnly = true,
-                        modifier = Modifier.weight(1f).clickable {
-                            val cal = Calendar.getInstance()
-                            endDate?.let { cal.time = it }
-                            DatePickerDialog(
-                                context,
-                                { _, y, m, d ->
-                                    val picked = Calendar.getInstance()
-                                    picked.set(y, m, d, 0, 0, 0)
-                                    picked.set(Calendar.MILLISECOND, 0)
-                                    endDate = picked.time
-                                },
-                                cal.get(Calendar.YEAR),
-                                cal.get(Calendar.MONTH),
-                                cal.get(Calendar.DAY_OF_MONTH)
-                            ).show()
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = {
-                                val cal = Calendar.getInstance()
-                                endDate?.let { cal.time = it }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val picked = Calendar.getInstance()
-                                        picked.set(y, m, d, 0, 0, 0)
-                                        picked.set(Calendar.MILLISECOND, 0)
-                                        endDate = picked.time
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick end date")
-                            }
-                        }
+                    Text(
+                        text = "${displayedLogs.size} ${if (displayedLogs.size == 1) "entry" else "entries"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Button(onClick = {
-                        // Validate presence/ordering
-                        if (startDate != null && endDate != null && startDate!!.time > endDate!!.time) {
-                            scope.launch { snackbarHostState.showSnackbar("Start date must be before or equal to end date") }
-                            return@Button
-                        }
-
-                        val startMillis = startDate?.let { startOfDayMillis(it) }
-                        val endMillis = endDate?.let { endOfDayMillis(it) }
-                        // Tell the ViewModel/Repository to apply the filters
-                        onApplyFilter(startMillis, endMillis, null)
-                        scope.launch { snackbarHostState.showSnackbar("Filter applied") }
-                    }) {
-                        Text("Apply")
-                    }
-
-                    Button(onClick = {
-                        startDate = null
-                        endDate = null
-                        onClearFilter()
-                    }) {
-                        Text("Clear")
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            if (showDialogState.value) {
-                AddTimeLogDialog(
-                    onDismiss = { showDialogState.value = false },
-                    onTimeLogAdd = {
-                        onStartTimeLog(it)
-                        showDialogState.value = false
-                    },
-                    jobs = jobs,
-                    navController = navController
-                )
-            }
-            // Scaffold hosts the snackbar
-            Scaffold(
-                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-                modifier = Modifier.fillMaxSize()
-            ) { innerPadding ->
-                LazyColumn(
+            // Time logs list
+            if (displayedLogs.isEmpty()) {
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    items(timeLogs) { logWithJob ->
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = if (filtersActive) "No logs match your filters" else "No time logs yet",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (filtersActive) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Try adjusting your date range",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(displayedLogs) { logWithJob ->
                         TimeLogItem(
                             logWithJob = logWithJob,
                             onDelete = { onDeleteTimeLog(logWithJob.timeLog) },
-                            onEndShift = { onEndTimeLog() }
+                            onEndShift = onEndTimeLog
                         )
                     }
                 }
             }
         }
+
+        // Dialog for starting new shift
+        if (showDialogState.value) {
+            AddTimeLogDialog(
+                onDismiss = { showDialogState.value = false },
+                onTimeLogAdd = {
+                    onStartTimeLog(it)
+                    showDialogState.value = false
+                },
+                jobs = jobs,
+                navController = navController
+            )
+        }
+
+        // Date picker dialogs
+        if (showStartDatePicker.value) {
+            DatePickerDialog(
+                onDismissRequest = { showStartDatePicker.value = false },
+                onDateSelected = { date ->
+                    onStartDateSelected(date)
+                },
+                initialDate = selectedStartDate ?: LocalDate.now(),
+                title = "Select Start Date"
+            )
+        }
+
+        if (showEndDatePicker.value) {
+            DatePickerDialog(
+                onDismissRequest = { showEndDatePicker.value = false },
+                onDateSelected = { date ->
+                    onEndDateSelected(date)
+                },
+                initialDate = selectedEndDate ?: selectedStartDate ?: LocalDate.now(),
+                title = "Select End Date"
+            )
+        }
     }
+}
+
+// DatePickerDialog Composable
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerDialog(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
+    initialDate: LocalDate = LocalDate.now(),
+    title: String = "Select Date"
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(text = title) },
+        text = {
+            DatePicker(
+                state = datePickerState,
+                title = null,
+                showModeToggle = false
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val date = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        onDateSelected(date)
+                    }
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -689,8 +924,5 @@ fun TimeLogScreenPreview() {
         onEndTimeLog = {},
         onDeleteTimeLog = {},
         navController = navController,
-        onApplyFilter = { _, _, _ -> },
-        onClearFilter = {},
-        selectedJobId = null
     )
 }
