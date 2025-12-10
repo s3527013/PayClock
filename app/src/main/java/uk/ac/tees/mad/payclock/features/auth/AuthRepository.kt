@@ -1,6 +1,7 @@
 package uk.ac.tees.mad.payclock.features.auth
 
 import android.net.Uri
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.credentials.Credential
 import androidx.credentials.CustomCredential
@@ -124,6 +125,8 @@ class AuthRepository {
             storageRef.putFile(imageUri).await()
             // Get download URL
             val downloadUrl = storageRef.downloadUrl.await().toString()
+
+            Log.d("AuthRepository", "Uploading image with URI: ${downloadUrl.toUri()}")
             // Update user profile
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setPhotoUri(downloadUrl.toUri())
