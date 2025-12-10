@@ -8,7 +8,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,34 +80,35 @@ fun AppDrawer(
     authViewModel: AuthViewModel
 ) {
     val user by authViewModel.currentUser.collectAsState()
+    // Local state for the profile picture URL
+    var profilePictureUrl by remember { mutableStateOf<String?>(null) }
+
+    // Effect to initialize profilePictureUrl when user data changes
+    LaunchedEffect(user?.photoUrl) {
+        user?.photoUrl?.let {
+            profilePictureUrl = it.toString()
+        }
+    }
+
     val localScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-
-    // State to hold the URI of the captured image or selected image
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Effect to update imageUri when user's photoUrl changes
-    LaunchedEffect(user?.photoUrl) {
-        user?.photoUrl?.let {
-            imageUri = it
-        }
-    }
 
     // Image picker launcher (gallery)
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
-            imageUri = uri // Update local state immediately
             uri?.let {
-                authViewModel.updateProfilePicture(it) { result -> // Convert Uri to String here
+                // Update local state immediately for instant UI feedback
+                profilePictureUrl = it.toString()
+                authViewModel.updateProfilePicture(it.toString()) { result -> // Convert Uri to String here
                     localScope.launch {
                         if (result.isSuccess) {
                             snackbarHostState.showSnackbar("Profile picture updated")
                         } else {
                             handleUploadError(result.exceptionOrNull(), snackbarHostState)
-                            // If upload fails, revert imageUri to the last known good state (optional)
-                            // For simplicity, we are not reverting here, but you could store the previous URI.
+                            // Optionally reset profilePictureUrl if upload fails, to reflect the last known good state
+                            // For simplicity, we are not resetting here, but you could store the previous valid URL.
                         }
                     }
                 }
@@ -123,15 +123,17 @@ fun AppDrawer(
             // This callback receives a Bitmap directly
             it?.let { bitmap ->
                 val tempUri = saveBitmapToCache(context, bitmap)
-                imageUri = tempUri // Update imageUri state with the cached image
+                // Update local state with the cached image URI as a String
+                profilePictureUrl = tempUri?.toString()
+
                 tempUri?.let { uri ->
-                    authViewModel.updateProfilePicture(uri) { result -> // Convert Uri to String here
+                    authViewModel.updateProfilePicture(uri.toString()) { result -> // Convert Uri to String here
                         localScope.launch {
                             if (result.isSuccess) {
                                 snackbarHostState.showSnackbar("Profile picture updated")
                             } else {
                                 handleUploadError(result.exceptionOrNull(), snackbarHostState)
-                                // If upload fails, revert imageUri to the last known good state (optional)
+                                // Optionally reset profilePictureUrl if upload fails
                             }
                         }
                     }
@@ -167,22 +169,15 @@ fun AppDrawer(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Use imageUri which is updated by LaunchedEffect or picker/camera result
-            // Convert Uri to String for AsyncImage if imageUri is a Uri
-            val currentPhotoUrl = when (imageUri) {
-                is Uri -> imageUri.toString()
-                else -> user?.photoUrl // Fallback to user's photoUrl (String?)
-            }
-
             AsyncImage(
-                model = currentPhotoUrl,
+                // Use the local profilePictureUrl state
+                model = profilePictureUrl ?: user?.photoUrl,
                 contentDescription = "Profile Picture",
                 placeholder = painterResource(id = R.drawable.ic_user_placeholder),
                 error = painterResource(id = R.drawable.ic_user_placeholder),
                 modifier = Modifier
                     .size(100.dp)
-                    .clip(CircleShape)
-                    .clickable { pickImageLauncher.launch("image/*") }, // Allow opening gallery by clicking the image
+                    .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.height(12.dp))

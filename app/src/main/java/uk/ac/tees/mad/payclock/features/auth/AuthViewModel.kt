@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -17,6 +18,8 @@ class AuthViewModel(
 
     val currentUser: StateFlow<FirebaseUser?> = repository.user
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    // Removed profilePictureUrlState as per request to manage state in Composable
 
     val authState: StateFlow<AuthState> = repository.user.map {
         if (it != null) {
@@ -34,13 +37,16 @@ class AuthViewModel(
      * Uploads the image and updates user profile photo.
      * Calls the provided callback with Result<String> (download URL or error).
      */
-    fun updateProfilePicture(imageUri: Uri, callback: (Result<String>) -> Unit) {
+    fun updateProfilePicture(imageUriString: String, callback: (Result<String>) -> Unit) {
         viewModelScope.launch {
-            val result = repository.updateProfilePicture(imageUri)
+            val result = repository.updateProfilePicture(Uri.parse(imageUriString))
             callback(result)
         }
     }
 
+    /**
+     * Updates the user's display name.
+     */
     fun updateDisplayName(newName: String) {
         viewModelScope.launch {
             repository.updateDisplayName(newName)

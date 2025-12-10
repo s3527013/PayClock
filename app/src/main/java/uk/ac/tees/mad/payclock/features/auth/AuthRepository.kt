@@ -27,8 +27,6 @@ class AuthRepository {
 
     private val firebaseAuth: FirebaseAuth = Firebase.auth
 
-    val currentUser: FirebaseUser?
-        get() = firebaseAuth.currentUser
 
     val user: Flow<FirebaseUser?> = callbackFlow {
         val authStateListener = FirebaseAuth.AuthStateListener { auth ->
@@ -107,13 +105,6 @@ class AuthRepository {
      */
     fun logout() {
         firebaseAuth.signOut()
-    }
-
-    /**
-     * Gets the current user's ID, or null if not logged in.
-     */
-    fun getCurrentUserId(): String? {
-        return firebaseAuth.currentUser?.uid
     }
 
     /**
