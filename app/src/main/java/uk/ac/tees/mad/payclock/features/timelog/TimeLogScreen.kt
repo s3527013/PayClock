@@ -3,12 +3,12 @@
 package uk.ac.tees.mad.payclock.features.timelog
 
 import android.Manifest
-import android.app.DatePickerDialog
 import android.location.Location
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,21 +26,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +54,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
@@ -65,18 +67,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
-import java.time.ZoneId
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 import uk.ac.tees.mad.payclock.features.jobs.data.Job
@@ -85,6 +86,10 @@ import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import uk.ac.tees.mad.payclock.features.timelog.util.reverseGeocodeWithBigDataCloud
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun TimeLogScreenRoute(
@@ -217,7 +222,6 @@ fun TimeLogScreenRoute(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("UNUSED_PARAMETER", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @Composable
 fun TimeLogScreen(
     timeLogs: List<TimeLogWithJob>,
@@ -231,6 +235,9 @@ fun TimeLogScreen(
     val showDialogState = remember { mutableStateOf(false) }
     val showStartDatePicker = remember { mutableStateOf(false) }
     val showEndDatePicker = remember { mutableStateOf(false) }
+
+    // Filter toggle state
+    var filterExpanded by remember { mutableStateOf(false) }
 
     // Date range filter state
     var startDateInput by remember { mutableStateOf("") }
@@ -287,8 +294,10 @@ fun TimeLogScreen(
             if (filtersActive) {
                 val matched = timeLogs.count { tlw ->
                     val startTimeMillis = tlw.timeLog.startTime?.time ?: return@count false
-                    val afterStart = startDate?.let { startTimeMillis >= localDateToMillis(it, true) } ?: true
-                    val beforeEnd = endDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
+                    val afterStart =
+                        startDate?.let { startTimeMillis >= localDateToMillis(it, true) } ?: true
+                    val beforeEnd =
+                        endDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
                     afterStart && beforeEnd
                 }
                 scope.launch {
@@ -335,8 +344,11 @@ fun TimeLogScreen(
         } else {
             timeLogs.filter { tlw ->
                 val startTimeMillis = tlw.timeLog.startTime?.time ?: return@filter false
-                val afterStart = selectedStartDate?.let { startTimeMillis >= localDateToMillis(it, true) } ?: true
-                val beforeEnd = selectedEndDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
+                val afterStart =
+                    selectedStartDate?.let { startTimeMillis >= localDateToMillis(it, true) }
+                        ?: true
+                val beforeEnd =
+                    selectedEndDate?.let { startTimeMillis <= localDateToMillis(it, false) } ?: true
                 afterStart && beforeEnd
             }
         }
@@ -349,7 +361,19 @@ fun TimeLogScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.primary
-                )
+                ),
+                actions = {
+                    // Filter indicator in toolbar
+                    if (filtersActive) {
+                        Badge(
+                            modifier = Modifier.padding(end = 8.dp),
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ) {
+                            Text("Filtered")
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -366,129 +390,283 @@ fun TimeLogScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Filter controls
+            // Filter toggle and controls
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize()
                 ) {
-                    Text(
-                        text = "Filter by Date",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Date inputs side by side
+                    // Toggle header
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Start Date Field
-                        Column(
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
-                                value = startDateInput,
-                                onValueChange = {
-                                    // Don't allow manual editing, only through date picker
-                                },
-                                label = { Text("Start Date") },
-                                placeholder = { Text("Select start date") },
-                                singleLine = true,
-                                readOnly = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = { showStartDatePicker.value = true }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CalendarToday,
-                                            contentDescription = "Pick Start Date"
-                                        )
-                                    }
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                                )
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Tap to select",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                                text = "Filter by Date",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
                             )
+
+                            // Show active filter badge
+                            if (filtersActive) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.secondary
+                                ) {
+                                    Text(
+                                        text = "Active",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
                         }
 
-                        // End Date Field
-                        Column(
-                            modifier = Modifier.weight(1f)
+                        // Toggle button
+                        IconButton(
+                            onClick = { filterExpanded = !filterExpanded },
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            OutlinedTextField(
-                                value = endDateInput,
-                                onValueChange = {
-                                    // Don't allow manual editing, only through date picker
-                                },
-                                label = { Text("End Date") },
-                                placeholder = { Text("Select end date") },
-                                singleLine = true,
-                                readOnly = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = { showEndDatePicker.value = true }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CalendarToday,
-                                            contentDescription = "Pick End Date"
-                                        )
-                                    }
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            Text(
-                                text = "Tap to select",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            Icon(
+                                imageVector = if (filterExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (filterExpanded) "Hide filters" else "Show filters",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // Filter controls (collapsible)
+                    if (filterExpanded) {
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
 
-                    // Filter action buttons
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Button(
-                            onClick = ::clearFilters,
-                            enabled = filtersActive,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
                         ) {
-                            Text("Clear Filters")
-                        }
+                            // Date inputs side by side
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                // Start Date Field
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = startDateInput,
+                                        onValueChange = {
+                                            // Don't allow manual editing, only through date picker
+                                        },
+                                        label = { Text("Start Date") },
+                                        placeholder = { Text("Select start date") },
+                                        singleLine = true,
+                                        readOnly = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        trailingIcon = {
+                                            IconButton(
+                                                onClick = { showStartDatePicker.value = true },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CalendarToday,
+                                                    contentDescription = "Pick Start Date",
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                                    Text(
+                                        text = "Tap to select",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                                    )
+                                }
 
-                        Button(
-                            onClick = ::applyFilters,
-                            enabled = selectedStartDate != null || selectedEndDate != null,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Apply Filters")
+                                // End Date Field
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = endDateInput,
+                                        onValueChange = {
+                                            // Don't allow manual editing, only through date picker
+                                        },
+                                        label = { Text("End Date") },
+                                        placeholder = { Text("Select end date") },
+                                        singleLine = true,
+                                        readOnly = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        trailingIcon = {
+                                            IconButton(
+                                                onClick = { showEndDatePicker.value = true },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CalendarToday,
+                                                    contentDescription = "Pick End Date",
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                                    Text(
+                                        text = "Tap to select",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Selected dates summary when filters are active
+                            if (filtersActive) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(
+                                                alpha = 0.3f
+                                            ),
+                                            shape = MaterialTheme.shapes.small
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = buildAnnotatedString {
+                                            withStyle(style = SpanStyle(fontWeight = FontWeight.Medium)) {
+                                                append("Filtering by: ")
+                                            }
+                                            if (selectedStartDate != null && selectedEndDate != null) {
+                                                append(
+                                                    "${selectedStartDate!!.format(dateFormatter)} to ${
+                                                        selectedEndDate!!.format(
+                                                            dateFormatter
+                                                        )
+                                                    }"
+                                                )
+                                            } else if (selectedStartDate != null) {
+                                                append(
+                                                    "From ${
+                                                        selectedStartDate!!.format(
+                                                            dateFormatter
+                                                        )
+                                                    }"
+                                                )
+                                            } else if (selectedEndDate != null) {
+                                                append(
+                                                    "Until ${
+                                                        selectedEndDate!!.format(
+                                                            dateFormatter
+                                                        )
+                                                    }"
+                                                )
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    IconButton(
+                                        onClick = ::clearFilters,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear filters",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            // Filter action buttons
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Button(
+                                    onClick = ::clearFilters,
+                                    enabled = filtersActive,
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Clear")
+                                    }
+                                }
+
+                                Button(
+                                    onClick = ::applyFilters,
+                                    enabled = selectedStartDate != null || selectedEndDate != null,
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Apply")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -502,7 +680,8 @@ fun TimeLogScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -571,11 +750,30 @@ fun TimeLogScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = if (filtersActive) "Filtered Logs" else "All Time Logs",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Text(
+                            text = if (filtersActive) "Filtered Logs" else "All Time Logs",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (filtersActive) {
+                            Text(
+                                text = buildAnnotatedString {
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Normal)) {
+                                        append("Showing ")
+                                    }
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("${displayedLogs.size}")
+                                    }
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Normal)) {
+                                        append(" of ${timeLogs.size} logs")
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
                     Text(
                         text = "${displayedLogs.size} ${if (displayedLogs.size == 1) "entry" else "entries"}",
@@ -613,6 +811,16 @@ fun TimeLogScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = ::clearFilters,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Clear Filters")
+                        }
                     }
                 }
             } else {
