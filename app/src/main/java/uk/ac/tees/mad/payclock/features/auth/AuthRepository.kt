@@ -1,18 +1,9 @@
 package uk.ac.tees.mad.payclock.features.auth
 
 import android.net.Uri
-import android.util.Log
 import androidx.core.net.toUri
-import androidx.credentials.Credential
-import androidx.credentials.CustomCredential
-import androidx.credentials.PasswordCredential
-import androidx.credentials.PublicKeyCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.auth.auth
 import com.google.firebase.storage.FirebaseStorage
@@ -20,92 +11,69 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-/**
- * Repository for handling authentication with Firebase.
- */
-class AuthRepository {
+@Singleton
+class AuthRepository @Inject constructor() {
+    private val auth: FirebaseAuth = Firebase.auth
 
-    private val firebaseAuth: FirebaseAuth = Firebase.auth
-
-
-    val user: Flow<FirebaseUser?> = callbackFlow {
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+    fun getAuthState(): Flow<com.google.firebase.auth.FirebaseUser?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { auth ->
             trySend(auth.currentUser)
         }
-        firebaseAuth.addAuthStateListener(authStateListener)
-        awaitClose { firebaseAuth.removeAuthStateListener(authStateListener) }
+        auth.addAuthStateListener(listener)
+
+        // Send current state immediately
+        trySend(auth.currentUser)
+
+        awaitClose {
+            auth.removeAuthStateListener(listener)
+        }
     }
 
-    suspend fun login(email: String, password: String): Result<Unit> {
+    suspend fun signIn(email: String, password: String): Result<Unit> {
         return try {
-            firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            auth.signInWithEmailAndPassword(email, password).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun signInWithGoogleCredential(credential: Credential): Result<Unit> {
+    suspend fun signUp(email: String, password: String, displayName: String): Result<Unit> {
         return try {
-            when (credential) {
-                is CustomCredential -> {
-                    if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                        try {
-                            val googleIdTokenCredential =
-                                GoogleIdTokenCredential.createFrom(credential.data)
-                            val firebaseCredential = GoogleAuthProvider.getCredential(
-                                googleIdTokenCredential.idToken,
-                                null
-                            )
-                            firebaseAuth.signInWithCredential(firebaseCredential).await()
-                            Result.success(Unit)
-                        } catch (e: GoogleIdTokenParsingException) {
-                            Result.failure(e)
-                        }
-                    } else {
-                        Result.failure(Exception("Unexpected custom credential type: ${credential.type}"))
-                    }
-                }
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
 
-                is PasswordCredential, is PublicKeyCredential -> Result.failure(Exception("Unsupported credential type."))
-                else -> Result.failure(Exception("Unexpected credential type."))
+            // Update display name
+            val user = authResult.user
+            if (user != null && displayName.isNotBlank()) {
+                val profileUpdates = UserProfileChangeRequest.Builder()
+                    .setDisplayName(displayName)
+                    .build()
+                user.updateProfile(profileUpdates).await()
             }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
-    /**
-     * Creates a new user with email and password.
-     */
-    suspend fun signUp(email: String, password: String): Result<String> {
-        return try {
-            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
-            val user = result.user
-            Result.success(user?.uid ?: "")
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Sends a password reset email.
-     */
-    suspend fun sendPasswordReset(email: String): Result<Unit> {
-        return try {
-            firebaseAuth.sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Signs out the current user.
-     */
-    fun logout() {
-        firebaseAuth.signOut()
+    suspend fun updateDisplayName(newName: String): Result<Unit> {
+        return try {
+            val user =
+                auth.currentUser ?: return Result.failure(Exception("User not authenticated"))
+
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(newName)
+                .build()
+
+            user.updateProfile(profileUpdates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
@@ -115,18 +83,14 @@ class AuthRepository {
     suspend fun updateProfilePicture(imageUri: Uri): Result<String> {
         try {
             val user =
-                firebaseAuth.currentUser ?: return Result.failure(Exception("User not signed in"))
+                auth.currentUser ?: return Result.failure(Exception("User not authenticated"))
             val uid = user.uid
-            // Upload path aligned with Storage rules: profile_images/{uid}/{uid}.jpg
             val storageRef =
                 FirebaseStorage.getInstance().reference.child("profile_images/$uid/$uid.jpg")
-
             // Upload the file with metadata
             storageRef.putFile(imageUri).await()
             // Get download URL
             val downloadUrl = storageRef.downloadUrl.await().toString()
-
-            Log.d("AuthRepository", "Uploading image with URI: ${downloadUrl.toUri()}")
             // Update user profile
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setPhotoUri(downloadUrl.toUri())
@@ -138,18 +102,24 @@ class AuthRepository {
         }
     }
 
-    suspend fun updateDisplayName(newName: String): Result<Unit> {
+    suspend fun resetPassword(email: String): Result<Unit> {
         return try {
-            val user =
-                firebaseAuth.currentUser ?: return Result.failure(Exception("User not logged in"))
-            val profileUpdates = UserProfileChangeRequest.Builder()
-                .setDisplayName(newName)
-                .build()
-            user.updateProfile(profileUpdates)
-                .await()
+            auth.sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    suspend fun signOut(): Result<Unit> {
+        return try {
+            auth.signOut()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    val user: com.google.firebase.auth.FirebaseUser?
+        get() = auth.currentUser
 }

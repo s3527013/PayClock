@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -16,13 +17,17 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -35,6 +40,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.drawer.AppDrawer
 import uk.ac.tees.mad.payclock.features.auth.AuthViewModel
 import uk.ac.tees.mad.payclock.features.auth.ForgotPasswordScreen
@@ -44,16 +50,33 @@ import uk.ac.tees.mad.payclock.features.auth.SplashScreen
 import uk.ac.tees.mad.payclock.features.jobs.JobScreenRoute
 import uk.ac.tees.mad.payclock.features.report.ReportScreenRoute
 import uk.ac.tees.mad.payclock.features.settings.SettingsScreen
+import uk.ac.tees.mad.payclock.features.settings.SettingsViewModel
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogControlScreenRoute
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogScreenRoute
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
+import uk.ac.tees.mad.payclock.ui.theme.ThemeChoice
 
 class MainActivity : ComponentActivity() {
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PayClockApp()
+            val settingsViewModel: SettingsViewModel = Graph.settingsViewModel
+            val themeChoice by settingsViewModel.themeChoice.collectAsState()
+            val useDynamicColor by settingsViewModel.useDynamicColor.collectAsState()
+
+            PayClockTheme(
+                themeChoice = themeChoice,
+                useDynamicColor = useDynamicColor
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    PayClockApp()
+                }
+            }
         }
     }
 }
@@ -61,121 +84,123 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayClockApp() {
-    PayClockTheme {
-        val navController = rememberNavController()
-        val authViewModel: AuthViewModel = viewModel()
+    val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-        val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentDestination = navBackStackEntry?.destination
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
 
-        val bottomNavItems = listOf("jobs", "time_log", "reports")
-        val showBottomAndTopBar = currentDestination?.route in bottomNavItems
+    val bottomNavItems = listOf("jobs", "time_log", "reports")
+    val showBottomAndTopBar = currentDestination?.route in bottomNavItems
 
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                // Use the extracted AppDrawer composable
-                AppDrawer(
-                    drawerState = drawerState,
-                    scope = scope,
-                    navController = navController,
-                    authViewModel = authViewModel
-                )
-            }
-        ) {
-            Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                topBar = {
-                    if (showBottomAndTopBar) {
-                        TopAppBar(
-                            title = { Text("PayClock") },
-                            navigationIcon = {
-                                IconButton(onClick = {
-                                    scope.launch { drawerState.apply { if (isClosed) open() else close() } }
-                                }) {
-                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
-                                }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            // Use the extracted AppDrawer composable
+            AppDrawer(
+                drawerState = drawerState,
+                scope = scope,
+                navController = navController,
+                authViewModel = authViewModel
+            )
+        }
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                if (showBottomAndTopBar) {
+                    TopAppBar(
+                        title = { Text("PayClock") },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                scope.launch { drawerState.apply { if (isClosed) open() else close() } }
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            titleContentColor = MaterialTheme.colorScheme.primary
                         )
-                    }
-                },
-                bottomBar = {
-                    if (showBottomAndTopBar) {
-                        BottomAppBar {
-                            bottomNavItems.forEach { screen ->
-                                NavigationBarItem(
-                                    icon = {
-                                        when (screen) {
-                                            "jobs" -> Icon(
-                                                Icons.Filled.Home,
-                                                contentDescription = null
-                                            )
-                                            "time_log" -> Icon(
-                                                Icons.AutoMirrored.Filled.List,
-                                                contentDescription = null
-                                            )
-                                            "reports" -> Icon(
-                                                Icons.Filled.Assessment,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    },
-                                    label = {
-                                        Text(
-                                            screen.split('_')
-                                                .joinToString(" ") { it.replaceFirstChar(Char::uppercase) })
-                                    },
-                                    selected = currentDestination?.hierarchy?.any { it.route == screen } == true,
-                                    onClick = {
-                                        navController.navigate(screen) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                    )
+                }
+            },
+            bottomBar = {
+                if (showBottomAndTopBar) {
+                    BottomAppBar {
+                        bottomNavItems.forEach { screen ->
+                            NavigationBarItem(
+                                icon = {
+                                    when (screen) {
+                                        "jobs" -> Icon(
+                                            Icons.Filled.Home,
+                                            contentDescription = null
+                                        )
+                                        "time_log" -> Icon(
+                                            Icons.AutoMirrored.Filled.List,
+                                            contentDescription = null
+                                        )
+                                        "reports" -> Icon(
+                                            Icons.Filled.Assessment,
+                                            contentDescription = null
+                                        )
                                     }
-                                )
-                            }
+                                },
+                                label = {
+                                    Text(
+                                        screen.split('_')
+                                            .joinToString(" ") { it.replaceFirstChar(Char::uppercase) })
+                                },
+                                selected = currentDestination?.hierarchy?.any { it.route == screen } == true,
+                                onClick = {
+                                    navController.navigate(screen) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            )
                         }
                     }
                 }
-            ) { innerPadding ->
-                NavHost(
-                    navController = navController,
-                    startDestination = "splash",
-                    modifier = Modifier.padding(innerPadding)
-                ) {
-                    composable(route = "splash") {
-                        SplashScreen(navController = navController)
-                    }
-                    composable(route = "login") {
-                        LoginScreen(navController = navController)
-                    }
-                    composable(route = "signup") {
-                        SignUpScreen(navController = navController)
-                    }
-                    composable(route = "forgot_password") {
-                        ForgotPasswordScreen(navController = navController)
-                    }
-                    composable(route = "jobs") {
-                        JobScreenRoute(navController = navController)
-                    }
-                    composable(route = "time_log") {
-                        TimeLogScreenRoute(navController = navController)
-                    }
-                    composable(route = "time_log_control") {
-                        TimeLogControlScreenRoute(navController = navController)
-                    }
-                    composable(route = "reports") {
-                        ReportScreenRoute(navController = navController)
-                    }
-                    composable(route = "settings") {
-                        SettingsScreen(navController = navController)
-                    }
+            }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = "splash",
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable(route = "splash") {
+                    SplashScreen(navController = navController)
+                }
+                composable(route = "login") {
+                    LoginScreen(navController = navController)
+                }
+                composable(route = "signup") {
+                    SignUpScreen(navController = navController)
+                }
+                composable(route = "forgot_password") {
+                    ForgotPasswordScreen(navController = navController)
+                }
+                composable(route = "jobs") {
+                    JobScreenRoute(navController = navController)
+                }
+                composable(route = "time_log") {
+                    TimeLogScreenRoute(navController = navController)
+                }
+                composable(route = "time_log_control") {
+                    TimeLogControlScreenRoute(navController = navController)
+                }
+                composable(route = "reports") {
+                    ReportScreenRoute(navController = navController)
+                }
+                composable(route = "settings") {
+                    SettingsScreen(navController = navController)
                 }
             }
         }

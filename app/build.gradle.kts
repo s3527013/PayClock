@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt.android)
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
@@ -59,6 +60,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.datastore.preferences.core)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Coil for AsyncImage
@@ -85,5 +87,9 @@ dependencies {
 
     // Location services
     implementation(libs.play.services.location)
-}
+    implementation("androidx.datastore:datastore-preferences")
 
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+}

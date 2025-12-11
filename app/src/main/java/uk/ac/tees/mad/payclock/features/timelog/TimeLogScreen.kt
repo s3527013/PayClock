@@ -109,8 +109,7 @@ fun TimeLogScreenRoute(
         remember { mutableStateOf<((lat: Double?, lng: Double?) -> Unit)?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted: Boolean ->
+        contract = ActivityResultContracts.RequestPermission(), onResult = { isGranted: Boolean ->
             val callback = pendingLocationCallback.value
             if (callback == null) return@rememberLauncherForActivityResult
 
@@ -148,13 +147,11 @@ fun TimeLogScreenRoute(
             }
 
             pendingLocationCallback.value = null
-        }
-    )
+        })
 
     fun fetchLocationAndThen(onResult: (lat: Double?, lng: Double?) -> Unit) {
         val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
         if (!hasPermission) {
@@ -252,7 +249,6 @@ fun TimeLogScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     // Date formatters
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -354,37 +350,30 @@ fun TimeLogScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Time Logs") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    // Filter indicator in toolbar
-                    if (filtersActive) {
-                        Badge(
-                            modifier = Modifier.padding(end = 8.dp),
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        ) {
-                            Text("Filtered")
-                        }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("Time Logs") }, colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                titleContentColor = MaterialTheme.colorScheme.primary
+            ), actions = {
+                // Filter indicator in toolbar
+                if (filtersActive) {
+                    Badge(
+                        modifier = Modifier.padding(end = 8.dp),
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    ) {
+                        Text("Filtered")
                     }
                 }
-            )
-        },
-        floatingActionButton = {
-            if (activeLog == null) {
-                FloatingActionButton(onClick = { showDialogState.value = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Start New Shift")
-                }
+            })
+    }, floatingActionButton = {
+        if (activeLog == null) {
+            FloatingActionButton(onClick = { showDialogState.value = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Start New Shift")
             }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { padding ->
+        }
+    }, snackbarHost = { SnackbarHost(hostState = snackbarHostState) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -433,8 +422,7 @@ fun TimeLogScreen(
                                     contentColor = MaterialTheme.colorScheme.secondary
                                 ) {
                                     Text(
-                                        text = "Active",
-                                        style = MaterialTheme.typography.labelSmall
+                                        text = "Active", style = MaterialTheme.typography.labelSmall
                                     )
                                 }
                             }
@@ -560,8 +548,7 @@ fun TimeLogScreen(
                                         .background(
                                             color = MaterialTheme.colorScheme.secondaryContainer.copy(
                                                 alpha = 0.3f
-                                            ),
-                                            shape = MaterialTheme.shapes.small
+                                            ), shape = MaterialTheme.shapes.small
                                         )
                                         .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -605,8 +592,7 @@ fun TimeLogScreen(
                                     )
 
                                     IconButton(
-                                        onClick = ::clearFilters,
-                                        modifier = Modifier.size(24.dp)
+                                        onClick = ::clearFilters, modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
@@ -813,8 +799,7 @@ fun TimeLogScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
-                            onClick = ::clearFilters,
-                            colors = ButtonDefaults.buttonColors(
+                            onClick = ::clearFilters, colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -842,13 +827,10 @@ fun TimeLogScreen(
         // Dialog for starting new shift
         if (showDialogState.value) {
             AddTimeLogDialog(
-                onDismiss = { showDialogState.value = false },
-                onTimeLogAdd = {
+                onDismiss = { showDialogState.value = false }, onTimeLogAdd = {
                     onStartTimeLog(it)
                     showDialogState.value = false
-                },
-                jobs = jobs,
-                navController = navController
+                }, jobs = jobs, navController = navController
             )
         }
 
@@ -887,42 +869,30 @@ fun DatePickerDialog(
     title: String = "Select Date"
 ) {
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDate
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
+        initialSelectedDateMillis = initialDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
             .toEpochMilli()
     )
 
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = { Text(text = title) },
-        text = {
-            DatePicker(
-                state = datePickerState,
-                title = null,
-                showModeToggle = false
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val date = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
-                        onDateSelected(date)
-                    }
+    AlertDialog(onDismissRequest = onDismissRequest, title = { Text(text = title) }, text = {
+        DatePicker(
+            state = datePickerState, title = null, showModeToggle = false
+        )
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                datePickerState.selectedDateMillis?.let { millis ->
+                    val date = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    onDateSelected(date)
                 }
-            ) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text("Cancel")
-            }
+            }) {
+            Text("OK")
         }
-    )
+    }, dismissButton = {
+        TextButton(onClick = onDismissRequest) {
+            Text("Cancel")
+        }
+    })
 }
 
 @Composable
@@ -958,8 +928,7 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
                     // Show stored end address if present
                     log.endAddress?.let { addr ->
                         Text(
-                            text = "End location: $addr",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "End location: $addr", style = MaterialTheme.typography.bodySmall
                         )
                     }
                     log.duration?.let {
@@ -1000,94 +969,85 @@ fun AddTimeLogDialog(
     var manualJobId by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Start New Shift") },
-        text = {
-            Column {
-                if (jobs.isEmpty()) {
-                    Text("No jobs available. Enter Job ID manually.")
-                } else {
-                    Text("Select a job:")
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LazyColumn(
-                        modifier = Modifier
-                            .height(150.dp)
-                    ) {
-                        items(jobs) { job ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Start New Shift") }, text = {
+        Column {
+            if (jobs.isEmpty()) {
+                Text("No jobs available. Enter Job ID manually.")
+            } else {
+                Text("Select a job:")
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyColumn(
+                    modifier = Modifier.height(150.dp)
+                ) {
+                    items(jobs) { job ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    // Make the selected job active, start the shift, then navigate to control
+                                    jobViewModel.setActiveJob(job)
+                                    onTimeLogAdd(job.id)
+                                    onDismiss()
+                                    navController.navigate("time_log_control")
+                                }, modifier = Modifier.fillMaxWidth()
                             ) {
-                                Button(
-                                    onClick = {
-                                        // Make the selected job active, start the shift, then navigate to control
-                                        jobViewModel.setActiveJob(job)
-                                        onTimeLogAdd(job.id)
-                                        onDismiss()
-                                        navController.navigate("time_log_control")
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text(text = job.name, fontWeight = FontWeight.Bold)
-                                        Text(
-                                            text = job.id,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(text = job.name, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = job.id,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(6.dp))
-                Text("Or enter job ID manually:")
-                Spacer(modifier = Modifier.height(4.dp))
-                OutlinedTextField(
-                    value = manualJobId,
-                    onValueChange = { manualJobId = it },
-                    label = { Text("Job ID") },
-                    placeholder = { Text("e.g., a-b-c-d") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (manualJobId.isNotBlank()) {
-                        // Try to resolve manual ID to an existing job
-                        val found = jobs.firstOrNull { it.id == manualJobId }
-                        if (found != null) {
-                            jobViewModel.setActiveJob(found)
-                            onTimeLogAdd(manualJobId)
-                            onDismiss()
-                            navController.navigate("time_log_control")
-                        } else {
-                            // If not found, inform the user (they may need to create the job first)
-                            Toast.makeText(
-                                context,
-                                "Job not found. Please create the job first.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                },
-                enabled = manualJobId.isNotBlank()
-            ) {
-                Text("Start")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text("Or enter job ID manually:")
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+                value = manualJobId,
+                onValueChange = { manualJobId = it },
+                label = { Text("Job ID") },
+                placeholder = { Text("e.g., a-b-c-d") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
-    )
+    }, confirmButton = {
+        Button(
+            onClick = {
+                if (manualJobId.isNotBlank()) {
+                    // Try to resolve manual ID to an existing job
+                    val found = jobs.firstOrNull { it.id == manualJobId }
+                    if (found != null) {
+                        jobViewModel.setActiveJob(found)
+                        onTimeLogAdd(manualJobId)
+                        onDismiss()
+                        navController.navigate("time_log_control")
+                    } else {
+                        // If not found, inform the user (they may need to create the job first)
+                        Toast.makeText(
+                            context,
+                            "Job not found. Please create the job first.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }, enabled = manualJobId.isNotBlank()
+        ) {
+            Text("Start")
+        }
+    }, dismissButton = {
+        Button(onClick = onDismiss) {
+            Text("Cancel")
+        }
+    })
 }
 
 @Preview(showBackground = true)
@@ -1103,10 +1063,8 @@ fun TimeLogScreenPreview() {
                 jobId = "1",
                 duration = 60,
                 userId = "1"
-            ),
-            jobName = "Android Developer"
-        ),
-        TimeLogWithJob(
+            ), jobName = "Android Developer"
+        ), TimeLogWithJob(
             timeLog = TimeLog(
                 id = "2",
                 startTime = Date(),
@@ -1114,8 +1072,7 @@ fun TimeLogScreenPreview() {
                 jobId = "2",
                 duration = null,
                 userId = "1"
-            ),
-            jobName = "UX Designer"
+            ), jobName = "UX Designer"
         )
     )
 

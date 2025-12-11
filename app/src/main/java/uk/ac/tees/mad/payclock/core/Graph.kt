@@ -8,6 +8,8 @@ import uk.ac.tees.mad.payclock.features.breaks.data.BreakRepository
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 import uk.ac.tees.mad.payclock.features.jobs.data.JobRepository
 import uk.ac.tees.mad.payclock.features.report.ReportViewModel
+import uk.ac.tees.mad.payclock.features.settings.SettingsViewModel
+import uk.ac.tees.mad.payclock.features.settings.data.SettingsRepository
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogViewModel
 import uk.ac.tees.mad.payclock.features.timelog.data.repository.TimeLogRepository
 
@@ -32,7 +34,6 @@ object Graph {
         BreakViewModel(breakRepository)
     }
 
-
     val timeLogRepository: TimeLogRepository by lazy {
         TimeLogRepository(firebaseAuth, firebaseFirestore, breakRepository)
     }
@@ -51,5 +52,13 @@ object Graph {
 
     val reportViewModel: ReportViewModel by lazy {
         ReportViewModel(jobRepository, timeLogRepository)
+    }
+
+    val settingsRepository: SettingsRepository by lazy {
+        SettingsRepository(firebaseFirestore)
+    }
+
+    val settingsViewModel: SettingsViewModel by lazy {
+        SettingsViewModel(settingsRepository, firebaseAuth)
     }
 }

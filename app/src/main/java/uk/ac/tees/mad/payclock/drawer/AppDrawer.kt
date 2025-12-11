@@ -234,7 +234,7 @@ fun AppDrawer(
             selected = false,
             onClick = {
                 scope.launch { drawerState.close() }
-                authViewModel.logout()
+                authViewModel.signOut() // Call the signlogout()
                 navController.navigate("login") {
                     popUpTo(navController.graph.id) { inclusive = true }
                 }
