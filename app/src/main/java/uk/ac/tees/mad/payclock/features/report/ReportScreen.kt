@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import uk.ac.tees.mad.payclock.core.Graph
@@ -50,8 +51,7 @@ fun ReportScreenRoute(
         selectedReportType = selectedReportType,
         timeSeriesReport = timeSeriesReport,
         onJobSelected = { reportViewModel.selectJob(it) },
-        onReportTypeSelected = { reportViewModel.selectReportType(it) },
-        navController = navController
+        onReportTypeSelected = { reportViewModel.selectReportType(it) }
     )
 }
 
@@ -63,8 +63,7 @@ fun ReportScreen(
     selectedReportType: ReportType,
     timeSeriesReport: List<TimeSeriesReportItem>,
     onJobSelected: (String?) -> Unit,
-    onReportTypeSelected: (ReportType) -> Unit,
-    navController: NavHostController
+    onReportTypeSelected: (ReportType) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -159,7 +158,7 @@ fun FilterControls(
                 expanded = reportTypeMenuExpanded,
                 onDismissRequest = { reportTypeMenuExpanded = false }
             ) {
-                ReportType.values().forEach {
+                ReportType.entries.forEach {
                     DropdownMenuItem(text = { Text(it.name) }, onClick = {
                         onReportTypeSelected(it)
                         reportTypeMenuExpanded = false
@@ -210,5 +209,48 @@ fun ReportCard(title: String, hours: Double, earnings: Double) {
                 Text("£%.2f".format(earnings))
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Report Card Item")
+@Composable
+fun ReportCardPreview() {
+    MaterialTheme {
+        ReportCard(
+            title = "October 2023",
+            hours = 124.5,
+            earnings = 1850.75
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Full Report Screen")
+@Composable
+fun ReportScreenPreview() {
+    // 1. Mock Data generation
+    // Note: Adjust the Job constructor arguments to match your actual data class
+    val sampleJobs = listOf(
+        Job(id = "1", name = "Barista" /* hourlyRate = 12.0 */),
+        Job(id = "2", name = "Web Dev" /* hourlyRate = 35.0 */)
+    )
+
+    val sampleReport = listOf(
+        TimeSeriesReportItem(label = "Week 1", totalHours = 40.0, totalEarnings = 600.0),
+        TimeSeriesReportItem(label = "Week 2", totalHours = 38.5, totalEarnings = 540.0),
+        TimeSeriesReportItem(label = "Week 3", totalHours = 42.0, totalEarnings = 710.0)
+    )
+
+    // 2. Mock Enum (Assuming the first value available)
+    val sampleType = ReportType.entries.firstOrNull() ?: ReportType.entries.toTypedArray()[0]
+
+    MaterialTheme {
+        ReportScreen(
+            jobs = sampleJobs,
+            selectedJobId = "1", // Simulate a selected job
+            selectedReportType = sampleType,
+            timeSeriesReport = sampleReport,
+            onJobSelected = {},
+            onReportTypeSelected = {}
+        )
     }
 }
