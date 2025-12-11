@@ -1,6 +1,7 @@
 [versions]
+coilNetworkOkhttp = "3.3.0"
 hilt = "2.57.2"
-agp = "8.13.1"
+agp = "8.13.2"
 coilCompose = "3.3.0"
 desugar_jdk_libs = "2.1.5"
 firebaseBom = "34.6.0"
@@ -22,10 +23,20 @@ googleid = "1.1.1"
 playServicesLocation = "21.3.0"
 material3 = "1.4.0"
 datastorePreferencesCore = "1.2.0"
+roomKtx = "2.8.4"
+roomCompiler = "2.8.4"
+roomRuntime = "2.8.4"
 
 
 
 [libraries]
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilNetworkOkhttp" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences" }
+firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
+google-firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 androidx-compose-material-icons-extended-android = { module = "androidx.compose.material:material-icons-extended-android", version.ref = "materialIconsExtendedAndroid" }

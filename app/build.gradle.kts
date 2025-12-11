@@ -65,7 +65,7 @@ dependencies {
 
     // Coil for AsyncImage
     implementation(libs.coil.compose)
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation(libs.coil.network.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -83,13 +83,18 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation(libs.google.firebase.appcheck.playintegrity)
 
     // Location services
     implementation(libs.play.services.location)
-    implementation("androidx.datastore:datastore-preferences")
+    implementation(libs.datastore.preferences)
 
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 }
