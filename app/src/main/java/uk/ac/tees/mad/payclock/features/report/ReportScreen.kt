@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,7 +68,13 @@ fun ReportScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Reports") })
+            TopAppBar(
+                title = { Text("Reports") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.primary
+                )
+            )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
@@ -119,7 +126,8 @@ fun FilterControls(
             )
             ExposedDropdownMenu(
                 expanded = jobMenuExpanded,
-                onDismissRequest = { jobMenuExpanded = false }) {
+                onDismissRequest = { jobMenuExpanded = false }
+            ) {
                 DropdownMenuItem(text = { Text("All Jobs") }, onClick = {
                     onJobSelected(null)
                     jobMenuExpanded = false

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt.android)
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
@@ -58,10 +59,13 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.datastore.preferences.core)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Coil for AsyncImage
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -79,5 +83,18 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-}
+    implementation(libs.google.firebase.appcheck.playintegrity)
 
+    // Location services
+    implementation(libs.play.services.location)
+    implementation(libs.datastore.preferences)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+}
