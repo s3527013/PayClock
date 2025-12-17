@@ -25,6 +25,21 @@ import uk.ac.tees.mad.payclock.features.timelog.data.TimeLog
 import uk.ac.tees.mad.payclock.features.timelog.data.TimeLogWithJob
 import java.util.Date
 
+/**
+ * Repository for managing time logs.
+ *
+ * This class handles all data operations related to time logs, including
+ * creating, reading, updating, and deleting them. It coordinates between
+ * a local Room database and a remote Firestore database to ensure data
+ * persistence and synchronization.
+ *
+ * @param auth The Firebase Authentication instance.
+ * @param firestore The Firebase Firestore instance for remote data operations.
+ * @param breakRepository The repository for managing breaks.
+ * @param timeLogDao The Data Access Object for time logs.
+ * @param jobDao The Data Access Object for jobs.
+ * @param externalScope A coroutine scope for background tasks.
+ */
 class TimeLogRepository(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
@@ -52,6 +67,9 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * A flow of all time logs for the current user, combined with their associated job names.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val allTimeLogs: Flow<List<TimeLogWithJob>> = authState.flatMapLatest { user ->
         if (user != null) {
@@ -71,10 +89,21 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * A flow of the currently active time log (i.e., a shift that has started but not ended).
+     */
     val activeTimeLog: Flow<TimeLogWithJob?> = allTimeLogs.map { logs ->
         logs.find { it.timeLog.endTime == null }
     }
 
+    /**
+     * Starts a new shift for a given job.
+     *
+     * @param jobId The ID of the job to start a shift for.
+     * @param startLat The starting latitude (optional).
+     * @param startLng The starting longitude (optional).
+     * @param startAddress The starting address (optional).
+     */
     suspend fun startNewShift(
         jobId: String,
         startLat: Double? = null,
@@ -98,6 +127,13 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * Ends the current active shift.
+     *
+     * @param endLat The ending latitude (optional).
+     * @param endLng The ending longitude (optional).
+     * @param endAddress The ending address (optional).
+     */
     suspend fun endCurrentShift(
         endLat: Double? = null,
         endLng: Double? = null,
@@ -134,6 +170,11 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * Deletes a specific time log.
+     *
+     * @param timeLog The time log to delete.
+     */
     suspend fun deleteTimeLog(timeLog: TimeLog) {
         if (timeLog.id.isNotBlank()) {
             timeLogDao.delete(timeLog.id)
@@ -141,6 +182,11 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * Deletes all time logs associated with a specific job.
+     *
+     * @param jobId The ID of the job whose time logs are to be deleted.
+     */
     suspend fun deleteTimeLogsForJob(jobId: String) {
         val userId = auth.currentUser?.uid ?: return
         timeLogDao.deleteTimeLogsForJob(jobId)
@@ -158,6 +204,11 @@ class TimeLogRepository(
         }
     }
 
+    /**
+     * Syncs data from Firestore to the local Room database.
+     *
+     * @param userId The ID of the user whose data is to be synced.
+     */
     private fun syncFirestoreData(userId: String) {
         // Sync TimeLogs
         firestore.collection("timeLogs")

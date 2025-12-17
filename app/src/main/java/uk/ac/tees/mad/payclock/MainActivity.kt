@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -54,10 +53,20 @@ import uk.ac.tees.mad.payclock.features.settings.SettingsViewModel
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogControlScreenRoute
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogScreenRoute
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
-import uk.ac.tees.mad.payclock.ui.theme.ThemeChoice
 
+/**
+ * The main activity for the PayClock application.
+ * This activity is the entry point of the app and sets up the main UI content.
+ */
 class MainActivity : ComponentActivity() {
-    
+
+    /**
+     * Called when the activity is first created.
+     * This function sets up the edge-to-edge display and composes the main app theme and layout.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after previously being shut down,
+     * this Bundle contains the data it most recently supplied in [onSaveInstanceState]. Otherwise it is null.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -81,6 +90,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * The main composable function for the PayClock application.
+ *
+ * This function sets up the entire application's UI, including the navigation drawer,
+ * top and bottom app bars, and the navigation host for all the different screens.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayClockApp() {
@@ -139,10 +154,12 @@ fun PayClockApp() {
                                             Icons.Filled.Home,
                                             contentDescription = null
                                         )
+
                                         "time_log" -> Icon(
                                             Icons.AutoMirrored.Filled.List,
                                             contentDescription = null
                                         )
+
                                         "reports" -> Icon(
                                             Icons.Filled.Assessment,
                                             contentDescription = null
@@ -207,6 +224,10 @@ fun PayClockApp() {
     }
 }
 
+/**
+ * A preview composable for the [PayClockApp].
+ * This allows for easy previewing of the entire application layout in Android Studio.
+ */
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {

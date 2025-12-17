@@ -35,6 +35,12 @@ import androidx.navigation.NavHostController
 import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.jobs.data.Job
 
+/**
+ * A route composable for the report screen.
+ * This composable connects the [ReportViewModel] to the [ReportScreen].
+ *
+ * @param navController The navigation controller.
+ */
 @Composable
 fun ReportScreenRoute(
     navController: NavHostController,
@@ -55,6 +61,16 @@ fun ReportScreenRoute(
     )
 }
 
+/**
+ * A composable function that displays the main report screen.
+ *
+ * @param jobs The list of jobs.
+ * @param selectedJobId The ID of the selected job.
+ * @param selectedReportType The selected report type.
+ * @param timeSeriesReport The list of time series report items.
+ * @param onJobSelected A callback that is invoked when a job is selected.
+ * @param onReportTypeSelected A callback that is invoked when a report type is selected.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen(
@@ -89,6 +105,15 @@ fun ReportScreen(
     }
 }
 
+/**
+ * A composable that displays filter controls for the report screen.
+ *
+ * @param jobs The list of jobs.
+ * @param selectedJobId The ID of the selected job.
+ * @param selectedReportType The selected report type.
+ * @param onJobSelected A callback that is invoked when a job is selected.
+ * @param onReportTypeSelected A callback that is invoked when a report type is selected.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterControls(
@@ -169,6 +194,11 @@ fun FilterControls(
     }
 }
 
+/**
+ * A composable that displays a list of time series report items.
+ *
+ * @param reportItems The list of report items to display.
+ */
 @Composable
 fun TimeSeriesReportList(reportItems: List<TimeSeriesReportItem>) {
     LazyColumn(
@@ -181,6 +211,13 @@ fun TimeSeriesReportList(reportItems: List<TimeSeriesReportItem>) {
     }
 }
 
+/**
+ * A composable that displays a single report item in a card.
+ *
+ * @param title The title of the report item.
+ * @param hours The total hours for this report item.
+ * @param earnings The total earnings for this report item.
+ */
 @Composable
 fun ReportCard(title: String, hours: Double, earnings: Double) {
     Card(
@@ -212,6 +249,9 @@ fun ReportCard(title: String, hours: Double, earnings: Double) {
     }
 }
 
+/**
+ * A preview for the [ReportCard] composable.
+ */
 @Preview(showBackground = true, name = "Report Card Item")
 @Composable
 fun ReportCardPreview() {
@@ -224,6 +264,9 @@ fun ReportCardPreview() {
     }
 }
 
+/**
+ * A preview for the [ReportScreen] composable.
+ */
 @Preview(showBackground = true, name = "Full Report Screen")
 @Composable
 fun ReportScreenPreview() {

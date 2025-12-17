@@ -8,6 +8,20 @@ import com.google.firebase.firestore.PropertyName
 import uk.ac.tees.mad.payclock.database.Converters
 import java.util.Date
 
+/**
+ * Data class representing a user's preferences.
+ * This class is used for both Room database persistence and Firestore synchronization.
+ *
+ * @property userId The unique identifier for the user, matching the Firebase Auth UID.
+ * @property themeChoice The user's selected theme (e.g., "SYSTEM", "LIGHT", "DARK").
+ * @property useDynamicColor `true` if dynamic theming (Material You) is enabled, `false` otherwise.
+ * @property displayName The user's chosen display name.
+ * @property email The user's email address.
+ * @property lastUpdated Timestamp of the last modification.
+ * @property createdAt Timestamp of the creation of the preferences record.
+ * @property lastSynced Timestamp of the last successful synchronization with Firestore.
+ * @property isDirty A flag to indicate if local changes need to be synced to Firestore.
+ */
 @Entity(tableName = "user_preferences")
 @TypeConverters(Converters::class)
 data class UserPreferences(
@@ -38,9 +52,17 @@ data class UserPreferences(
     var isDirty: Boolean = false
 ) {
     companion object {
+        /**
+         * The name of the Firestore collection where user preferences are stored.
+         */
         const val COLLECTION_NAME = "user_preferences"
     }
 
+    /**
+     * Converts the [UserPreferences] object to a [Map] for storing in Firestore.
+     *
+     * @return A map representation of the user preferences.
+     */
     fun toMap(): Map<String, Any> = mapOf(
         "user_id" to userId,
         "theme_choice" to themeChoice,
@@ -51,7 +73,11 @@ data class UserPreferences(
         "created_at" to createdAt
     )
 
-    // Helper function to update timestamp
+    /**
+     * Creates a new [UserPreferences] object with the `lastUpdated` timestamp set to the current time.
+     *
+     * @return A new [UserPreferences] instance with the updated timestamp.
+     */
     fun withUpdatedTimestamp(): UserPreferences {
         return this.copy(lastUpdated = Timestamp.now())
     }

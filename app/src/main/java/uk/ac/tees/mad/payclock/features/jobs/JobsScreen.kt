@@ -42,6 +42,12 @@ import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.timelog.TimeLogViewModel
 
+/**
+ * A route composable for the job screen.
+ * This composable connects the [JobViewModel] and [TimeLogViewModel] to the [JobScreen].
+ *
+ * @param navController The navigation controller.
+ */
 @Composable
 fun JobScreenRoute(
     navController: NavHostController,
@@ -64,6 +70,16 @@ fun JobScreenRoute(
     )
 }
 
+/**
+ * A composable function that displays the main job screen.
+ *
+ * @param jobs The list of jobs.
+ * @param onAddJob A callback that is invoked when a new job is added.
+ * @param onUpdateJob A callback that is invoked when a job is updated.
+ * @param onRemoveJob A callback that is invoked when a job is removed.
+ * @param onGoToTimeLogControl A callback that is invoked when the user wants to start a shift for a job.
+ * @param isShiftActive Whether a shift is currently active.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobScreen(
@@ -137,6 +153,13 @@ fun JobScreen(
     }
 }
 
+/**
+ * A composable that displays a dialog to confirm the deletion of a job.
+ *
+ * @param job The job to be deleted.
+ * @param onDismiss A callback that is invoked when the dialog is dismissed.
+ * @param onConfirm A callback that is invoked when the user confirms the deletion.
+ */
 @Composable
 fun DeleteJobDialog(
     job: Job,
@@ -161,6 +184,15 @@ fun DeleteJobDialog(
 }
 
 
+/**
+ * A composable that displays a single job item.
+ *
+ * @param job The job to display.
+ * @param onEdit A callback that is invoked when the user wants to edit the job.
+ * @param onDelete A callback that is invoked when the user wants to delete the job.
+ * @param onGoToTimeLogControl A callback that is invoked when the user wants to start a shift for the job.
+ * @param isShiftActive Whether a shift is currently active.
+ */
 @Composable
 fun JobItem(
     job: Job,
@@ -200,6 +232,12 @@ fun JobItem(
     }
 }
 
+/**
+ * A composable that displays a dialog for adding a new job.
+ *
+ * @param onDismiss A callback that is invoked when the dialog is dismissed.
+ * @param onJobAdd A callback that is invoked when a new job is added.
+ */
 @Composable
 fun AddJobDialog(
     onDismiss: () -> Unit, onJobAdd: (String, Double) -> Unit
@@ -235,6 +273,13 @@ fun AddJobDialog(
 }
 
 
+/**
+ * A composable that displays a dialog for updating a job.
+ *
+ * @param job The job to be updated.
+ * @param onDismiss A callback that is invoked when the dialog is dismissed.
+ * @param onJobUpdate A callback that is invoked when the job is updated.
+ */
 @Composable
 fun UpdateJobDialog(
     job: Job, onDismiss: () -> Unit, onJobUpdate: (Job) -> Unit
@@ -272,6 +317,9 @@ fun UpdateJobDialog(
     })
 }
 
+/**
+ * A preview for the [JobScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun JobScreenPreview() {

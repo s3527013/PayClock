@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.androidx.ui)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Coil for AsyncImage

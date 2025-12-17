@@ -91,6 +91,12 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
+/**
+ * A route composable for the time log screen.
+ * This composable connects the [TimeLogViewModel] and [JobViewModel] to the [TimeLogScreen].
+ *
+ * @param navController The navigation controller.
+ */
 @Composable
 fun TimeLogScreenRoute(
     navController: NavHostController,
@@ -218,6 +224,17 @@ fun TimeLogScreenRoute(
     )
 }
 
+/**
+ * A composable function that displays the main time log screen.
+ *
+ * @param timeLogs The list of time logs.
+ * @param activeLog The currently active time log.
+ * @param jobs The list of jobs.
+ * @param onStartTimeLog A callback that is invoked when a new time log is started.
+ * @param onEndTimeLog A callback that is invoked when a time log is ended.
+ * @param onDeleteTimeLog A callback that is invoked when a time log is deleted.
+ * @param navController The navigation controller.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeLogScreen(
@@ -859,7 +876,14 @@ fun TimeLogScreen(
     }
 }
 
-// DatePickerDialog Composable
+/**
+ * A composable that displays a date picker dialog.
+ *
+ * @param onDismissRequest A callback that is invoked when the dialog is dismissed.
+ * @param onDateSelected A callback that is invoked when a date is selected.
+ * @param initialDate The initial date to display.
+ * @param title The title of the dialog.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerDialog(
@@ -895,6 +919,13 @@ fun DatePickerDialog(
     })
 }
 
+/**
+ * A composable that displays a single time log item.
+ *
+ * @param logWithJob The time log with job information to display.
+ * @param onDelete A callback that is invoked when the user wants to delete the time log.
+ * @param onEndShift A callback that is invoked when the user wants to end the shift.
+ */
 @Composable
 fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: () -> Unit) {
     val formatter =
@@ -952,12 +983,27 @@ fun TimeLogItem(logWithJob: TimeLogWithJob, onDelete: () -> Unit, onEndShift: ()
     }
 }
 
+/**
+ * Formats a duration in minutes into a string.
+ *
+ * @param durationInMinutes The duration in minutes.
+ * @return The formatted duration string.
+ */
 fun formatDuration(durationInMinutes: Long): String {
     val hours = durationInMinutes / 60
     val minutes = durationInMinutes % 60
     return String.format(Locale.US, "%d hours, %d minutes", hours, minutes)
 }
 
+/**
+ * A composable that displays a dialog for adding a new time log.
+ *
+ * @param jobViewModel The view model for jobs.
+ * @param onDismiss A callback that is invoked when the dialog is dismissed.
+ * @param onTimeLogAdd A callback that is invoked when a new time log is added.
+ * @param jobs The list of jobs.
+ * @param navController The navigation controller.
+ */
 @Composable
 fun AddTimeLogDialog(
     jobViewModel: JobViewModel = Graph.jobViewModel,
@@ -1050,6 +1096,9 @@ fun AddTimeLogDialog(
     })
 }
 
+/**
+ * A preview for the [TimeLogScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun TimeLogScreenPreview() {

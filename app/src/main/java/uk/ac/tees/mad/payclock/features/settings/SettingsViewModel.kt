@@ -10,15 +10,27 @@ import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.features.settings.data.SettingsRepository
 import uk.ac.tees.mad.payclock.ui.theme.ThemeChoice
 
+/**
+ * A ViewModel for the settings screen.
+ *
+ * @param settingsRepository The repository for settings.
+ * @param firebaseAuth The Firebase authentication instance.
+ */
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _themeChoice = MutableStateFlow(ThemeChoice.SYSTEM)
+    /**
+     * A StateFlow that emits the user's theme choice.
+     */
     val themeChoice: StateFlow<ThemeChoice> = _themeChoice.asStateFlow()
 
     private val _useDynamicColor = MutableStateFlow(true)
+    /**
+     * A StateFlow that emits whether the user is using dynamic color.
+     */
     val useDynamicColor: StateFlow<Boolean> = _useDynamicColor.asStateFlow()
 
     init {
@@ -41,6 +53,11 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Saves the user's theme choice.
+     *
+     * @param choice The theme choice to save.
+     */
     fun saveThemeChoice(choice: ThemeChoice) {
         val userId = firebaseAuth.currentUser?.uid ?: return
         viewModelScope.launch {
@@ -54,6 +71,11 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Saves whether the user is using dynamic color.
+     *
+     * @param useDynamic Whether to use dynamic color.
+     */
     fun saveUseDynamicColor(useDynamic: Boolean) {
         val userId = firebaseAuth.currentUser?.uid ?: return
         viewModelScope.launch {

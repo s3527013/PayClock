@@ -65,6 +65,11 @@ import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.auth.AuthViewModel
 import uk.ac.tees.mad.payclock.ui.theme.ThemeChoice
 
+/**
+ * A composable function that displays the settings screen.
+ *
+ * @param navController The navigation controller.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -369,6 +374,15 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * A composable that displays a single theme option item.
+ *
+ * @param title The title of the theme option.
+ * @param description The description of the theme option.
+ * @param icon The icon for the theme option.
+ * @param isSelected Whether the theme option is currently selected.
+ * @param onClick A callback that is invoked when the theme option is clicked.
+ */
 @Composable
 fun ThemeOptionItem(
     title: String,
@@ -439,6 +453,12 @@ fun ThemeOptionItem(
     }
 }
 
+/**
+ * A composable that displays a color sample.
+ *
+ * @param color The color to display.
+ * @param label The label for the color.
+ */
 @Composable
 fun RowScope.ColorSample(
     color: Color,
@@ -462,6 +482,9 @@ fun RowScope.ColorSample(
     }
 }
 
+/**
+ * A preview for the [SettingsScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {

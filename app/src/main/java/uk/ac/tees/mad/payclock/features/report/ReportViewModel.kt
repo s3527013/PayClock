@@ -22,18 +22,35 @@ import java.util.Locale
 
 // --- Data Classes ---
 
+/**
+ * A data class that represents a report for a single job.
+ *
+ * @param jobName The name of the job.
+ * @param totalHours The total hours worked for the job.
+ * @param totalEarnings The total earnings for the job.
+ */
 data class JobReport(
     val jobName: String,
     val totalHours: Double,
     val totalEarnings: Double
 )
 
+/**
+ * A data class that represents a single item in a time series report.
+ *
+ * @param label The label for the time series item (e.g., "Week 1", "October 2023").
+ * @param totalHours The total hours worked for the time series item.
+ * @param totalEarnings The total earnings for the time series item.
+ */
 data class TimeSeriesReportItem(
     val label: String,
     val totalHours: Double,
     val totalEarnings: Double,
 )
 
+/**
+ * An enum that represents the different types of reports that can be generated.
+ */
 enum class ReportType {
     Daily, Weekly, Monthly, Quarterly, Yearly
 }
@@ -41,6 +58,12 @@ enum class ReportType {
 
 // --- ViewModel ---
 
+/**
+ * A ViewModel for the report screen.
+ *
+ * @param jobRepository The repository for jobs.
+ * @param timeLogRepository The repository for time logs.
+ */
 class ReportViewModel(
     jobRepository: JobRepository,
     timeLogRepository: TimeLogRepository
@@ -48,19 +71,38 @@ class ReportViewModel(
 
     // --- State & Filters ---
 
+    /**
+     * A StateFlow that emits the list of all jobs.
+     */
     val jobs: StateFlow<List<Job>> = jobRepository.jobs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _selectedJobId = MutableStateFlow<String?>(null)
+    /**
+     * A StateFlow that emits the ID of the selected job.
+     */
     val selectedJobId: StateFlow<String?> = _selectedJobId.asStateFlow()
 
     private val _selectedReportType = MutableStateFlow(ReportType.Daily)
+    /**
+     * A StateFlow that emits the selected report type.
+     */
     val selectedReportType: StateFlow<ReportType> = _selectedReportType.asStateFlow()
 
+    /**
+     * Selects a job.
+     *
+     * @param jobId The ID of the job to select.
+     */
     fun selectJob(jobId: String?) {
         _selectedJobId.value = jobId
     }
 
+    /**
+     * Selects a report type.
+     *
+     * @param reportType The report type to select.
+     */
     fun selectReportType(reportType: ReportType) {
         _selectedReportType.value = reportType
     }
@@ -94,6 +136,9 @@ class ReportViewModel(
 
     // --- Report Flows ---
 
+    /**
+     * A StateFlow that emits a list of job reports.
+     */
     val jobReports: StateFlow<List<JobReport>> =
         combine(jobs, timeLogRepository.allTimeLogs) { jobs, timeLogs ->
             jobs.map { job ->
@@ -111,6 +156,9 @@ class ReportViewModel(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
+    /**
+     * A StateFlow that emits a list of time series report items.
+     */
     val timeSeriesReport: StateFlow<List<TimeSeriesReportItem>> =
         combine(filteredLogs, _selectedReportType) { logs, type ->
             when (type) {
@@ -125,6 +173,12 @@ class ReportViewModel(
 
     // --- Grouping Functions ---
 
+    /**
+     * Groups a list of time logs by day.
+     *
+     * @param logs The list of time logs to group.
+     * @return A list of [TimeSeriesReportItem]s, where each item represents a day.
+     */
     private fun groupDaily(logs: List<Triple<TimeLog, Double, Double>>): List<TimeSeriesReportItem> {
         val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
         return logs
@@ -142,7 +196,12 @@ class ReportViewModel(
             }
     }
 
-
+    /**
+     * Groups a list of time logs by week.
+     *
+     * @param logs The list of time logs to group.
+     * @return A list of [TimeSeriesReportItem]s, where each item represents a week.
+     */
     private fun groupWeekly(logs: List<Triple<TimeLog, Double, Double>>): List<TimeSeriesReportItem> {
         val weekFields = WeekFields.of(Locale.getDefault())
         return logs
@@ -165,6 +224,12 @@ class ReportViewModel(
             }
     }
 
+    /**
+     * Groups a list of time logs by month.
+     *
+     * @param logs The list of time logs to group.
+     * @return A list of [TimeSeriesReportItem]s, where each item represents a month.
+     */
     private fun groupMonthly(logs: List<Triple<TimeLog, Double, Double>>): List<TimeSeriesReportItem> {
         return logs
             .groupBy {
@@ -188,6 +253,12 @@ class ReportViewModel(
             }
     }
 
+    /**
+     * Groups a list of time logs by quarter.
+     *
+     * @param logs The list of time logs to group.
+     * @return A list of [TimeSeriesReportItem]s, where each item represents a quarter.
+     */
     private fun groupQuarterly(logs: List<Triple<TimeLog, Double, Double>>): List<TimeSeriesReportItem> {
         return logs
             .groupBy {
@@ -209,6 +280,12 @@ class ReportViewModel(
             }
     }
 
+    /**
+     * Groups a list of time logs by year.
+     *
+     * @param logs The list of time logs to group.
+     * @return A list of [TimeSeriesReportItem]s, where each item represents a year.
+     */
     private fun groupYearly(logs: List<Triple<TimeLog, Double, Double>>): List<TimeSeriesReportItem> {
         return logs
             .groupBy {

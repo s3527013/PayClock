@@ -37,6 +37,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 
+/**
+ * A composable function that displays the splash screen.
+ *
+ * @param navController The navigation controller.
+ * @param authViewModel The view model for authentication.
+ */
 @Composable
 fun SplashScreen(
     navController: NavHostController,
@@ -116,6 +122,9 @@ fun SplashScreen(
     }
 }
 
+/**
+ * A composable that displays the loading state of the splash screen.
+ */
 @Composable
 fun LoadingState() {
     Column(
@@ -152,6 +161,13 @@ fun LoadingState() {
     }
 }
 
+/**
+ * A composable that displays the error state of the splash screen.
+ *
+ * @param errorMessage The error message to display.
+ * @param onRetry A callback that is invoked when the user clicks the "Retry" button.
+ * @param onContinue A callback that is invoked when the user clicks the "Continue to Login" button.
+ */
 @Composable
 fun ErrorState(
     errorMessage: String,
@@ -216,6 +232,9 @@ fun ErrorState(
     }
 }
 
+/**
+ * A preview for the [SplashScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SplashScreenPreview() {
@@ -224,6 +243,9 @@ fun SplashScreenPreview() {
     }
 }
 
+/**
+ * A preview for the [LoadingState] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun LoadingStatePreview() {
@@ -232,6 +254,9 @@ fun LoadingStatePreview() {
     }
 }
 
+/**
+ * A preview for the [ErrorState] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ErrorStatePreview() {

@@ -15,6 +15,15 @@ import uk.ac.tees.mad.payclock.database.JobDao
 import uk.ac.tees.mad.payclock.features.timelog.data.repository.TimeLogRepository
 import java.util.Date
 
+/**
+ * A repository for jobs.
+ *
+ * @param auth The Firebase authentication instance.
+ * @param firestore The Firebase Firestore instance.
+ * @param timeLogRepository The repository for time logs.
+ * @param jobDao The DAO for jobs.
+ * @param externalScope The external coroutine scope.
+ */
 class JobRepository(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
@@ -23,6 +32,9 @@ class JobRepository(
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
 
+    /**
+     * A Flow that emits the list of all jobs for the current user.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val jobs: Flow<List<Job>> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
@@ -38,6 +50,12 @@ class JobRepository(
         }
     }
 
+    /**
+     * Adds a new job.
+     *
+     * @param name The name of the job.
+     * @param hourlyRate The hourly rate of the job.
+     */
     suspend fun addJob(name: String, hourlyRate: Double) {
         val userId = auth.currentUser?.uid ?: return
         val newJob = Job(
@@ -51,6 +69,11 @@ class JobRepository(
         firestore.collection("jobs").document(newJob.id).set(newJob).await()
     }
 
+    /**
+     * Updates a job.
+     *
+     * @param job The job to update.
+     */
     suspend fun updateJob(job: Job) {
         if (job.id.isNotBlank()) {
             val updatedJob = job.copy(lastUpdated = Date())
@@ -59,6 +82,11 @@ class JobRepository(
         }
     }
 
+    /**
+     * Removes a job.
+     *
+     * @param job The job to remove.
+     */
     suspend fun removeJob(job: Job) {
         if (job.id.isNotBlank()) {
             timeLogRepository.deleteTimeLogsForJob(job.id)
