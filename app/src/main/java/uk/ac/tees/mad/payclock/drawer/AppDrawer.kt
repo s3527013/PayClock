@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -58,7 +59,21 @@ import uk.ac.tees.mad.payclock.features.auth.AuthViewModel
 import java.io.File
 import java.io.FileOutputStream
 
-// Helper function to save Bitmap to cache
+/**
+ * Data class to hold user information for the drawer, decoupled from the ViewModel.
+ *
+ * @param displayName The name of the user.
+ * @param photoUrl The URL of the user's profile picture.
+ */
+private data class DrawerData(val displayName: String?, val photoUrl: String?)
+
+/**
+ * Saves a bitmap to the cache and returns its URI.
+ *
+ * @param ctx The context.
+ * @param bitmap The bitmap to save.
+ * @return The URI of the saved bitmap, or null if an error occurred.
+ */
 fun saveBitmapToCache(ctx: Context, bitmap: Bitmap): Uri? {
     return try {
         val file = File(ctx.cacheDir, "profile_${System.currentTimeMillis()}.jpg")
@@ -72,6 +87,15 @@ fun saveBitmapToCache(ctx: Context, bitmap: Bitmap): Uri? {
     }
 }
 
+/**
+ * A composable that displays the application drawer. This component is stateful and
+ * responsible for handling user authentication state and actions.
+ *
+ * @param drawerState The state of the drawer.
+ * @param scope The coroutine scope.
+ * @param navController The navigation controller.
+ * @param authViewModel The view model for authentication.
+ */
 @Composable
 fun AppDrawer(
     drawerState: DrawerState,
@@ -79,14 +103,14 @@ fun AppDrawer(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-    val user by authViewModel.currentUser.collectAsState()
-    // Local state for the profile picture URL
+    val authUser by authViewModel.currentUser.collectAsState()
+    val user = authUser?.let { DrawerData(it.displayName, it.photoUrl?.toString()) }
+
     var profilePictureUrl by remember { mutableStateOf<String?>(null) }
 
-    // Effect to initialize profilePictureUrl when user data changes
     LaunchedEffect(user?.photoUrl) {
         user?.photoUrl?.let {
-            profilePictureUrl = it.toString()
+            profilePictureUrl = it
         }
     }
 
@@ -94,21 +118,17 @@ fun AppDrawer(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
-    // Image picker launcher (gallery)
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
             uri?.let {
-                // Update local state immediately for instant UI feedback
                 profilePictureUrl = it.toString()
-                authViewModel.updateProfilePicture(it.toString()) { result -> // Convert Uri to String here
+                authViewModel.updateProfilePicture(it.toString()) { result ->
                     localScope.launch {
                         if (result.isSuccess) {
                             snackbarHostState.showSnackbar("Profile picture updated")
                         } else {
                             handleUploadError(result.exceptionOrNull(), snackbarHostState)
-                            // Optionally reset profilePictureUrl if upload fails, to reflect the last known good state
-                            // For simplicity, we are not resetting here, but you could store the previous valid URL.
                         }
                     }
                 }
@@ -116,24 +136,20 @@ fun AppDrawer(
         }
     )
 
-    // Camera launcher: TakePicturePreview returns a Bitmap
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview(),
-        onResult = {
-            // This callback receives a Bitmap directly
-            it?.let { bitmap ->
-                val tempUri = saveBitmapToCache(context, bitmap)
-                // Update local state with the cached image URI as a String
+        onResult = { bitmap ->
+            bitmap?.let {
+                val tempUri = saveBitmapToCache(context, it)
                 profilePictureUrl = tempUri?.toString()
 
                 tempUri?.let { uri ->
-                    authViewModel.updateProfilePicture(uri.toString()) { result -> // Convert Uri to String here
+                    authViewModel.updateProfilePicture(uri.toString()) { result ->
                         localScope.launch {
                             if (result.isSuccess) {
                                 snackbarHostState.showSnackbar("Profile picture updated")
                             } else {
                                 handleUploadError(result.exceptionOrNull(), snackbarHostState)
-                                // Optionally reset profilePictureUrl if upload fails
                             }
                         }
                     }
@@ -143,15 +159,12 @@ fun AppDrawer(
         }
     )
 
-    // Permission launcher for Camera
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                // Permission granted, launch camera
                 cameraLauncher.launch(null)
             } else {
-                // Permission denied
                 localScope.launch {
                     snackbarHostState.showSnackbar("Camera permission is required to take photos.")
                 }
@@ -160,8 +173,59 @@ fun AppDrawer(
     )
 
     ModalDrawerSheet {
-        SnackbarHost(hostState = snackbarHostState)
+        AppDrawerContent(
+            user = user,
+            profilePictureUrl = profilePictureUrl,
+            snackbarHostState = snackbarHostState,
+            onTakePhotoClick = {
+                val cameraPermissionStatus =
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                if (cameraPermissionStatus == PackageManager.PERMISSION_GRANTED) {
+                    cameraLauncher.launch(null)
+                } else {
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            onChooseFromGalleryClick = { pickImageLauncher.launch("image/*") },
+            onSettingsClick = {
+                scope.launch { drawerState.close() }
+                navController.navigate("settings")
+            },
+            onLogoutClick = {
+                scope.launch { drawerState.close() }
+                authViewModel.signOut()
+                navController.navigate("login") {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
+            }
+        )
+    }
+}
 
+/**
+ * A stateless composable that displays the content of the application drawer.
+ *
+ * @param user The user data to display.
+ * @param profilePictureUrl The URL of the profile picture to display.
+ * @param snackbarHostState The state for showing snackbars.
+ * @param onTakePhotoClick The action to perform when the take photo button is clicked.
+ * @param onChooseFromGalleryClick The action to perform when the choose from gallery button is clicked.
+ * @param onSettingsClick The action to perform when the settings item is clicked.
+ * @param onLogoutClick The action to perform when the logout item is clicked.
+ */
+@Composable
+private fun AppDrawerContent(
+    user: DrawerData?,
+    profilePictureUrl: String?,
+    snackbarHostState: SnackbarHostState,
+    onTakePhotoClick: () -> Unit,
+    onChooseFromGalleryClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    SnackbarHost(hostState = snackbarHostState)
+
+    Column {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -170,7 +234,6 @@ fun AppDrawer(
             verticalArrangement = Arrangement.Center
         ) {
             AsyncImage(
-                // Use the local profilePictureUrl state
                 model = profilePictureUrl ?: user?.photoUrl,
                 contentDescription = "Profile Picture",
                 placeholder = painterResource(id = R.drawable.ic_user_placeholder),
@@ -186,24 +249,11 @@ fun AppDrawer(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {
-                    val cameraPermissionStatus = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.CAMERA
-                    )
-                    if (cameraPermissionStatus == PackageManager.PERMISSION_GRANTED) {
-                        cameraLauncher.launch(null) // Launch camera directly if permission granted
-                    } else {
-                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA) // Request permission
-                    }
-                }) {
+                IconButton(onClick = onTakePhotoClick) {
                     Icon(Icons.Default.CameraAlt, contentDescription = "Take photo")
                 }
-                IconButton(onClick = { pickImageLauncher.launch("image/*") }) {
-                    Icon(
-                        Icons.Default.Photo,
-                        contentDescription = "Choose from gallery"
-                    ) // Using Material 3 Photo icon
+                IconButton(onClick = onChooseFromGalleryClick) {
+                    Icon(Icons.Default.Photo, contentDescription = "Choose from gallery")
                 }
             }
 
@@ -219,10 +269,7 @@ fun AppDrawer(
             icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
             label = { Text("Settings") },
             selected = false,
-            onClick = {
-                scope.launch { drawerState.close() }
-                navController.navigate("settings") // Navigate to the settings route
-            },
+            onClick = onSettingsClick,
             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
         )
 
@@ -232,22 +279,19 @@ fun AppDrawer(
             icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout") },
             label = { Text("Logout") },
             selected = false,
-            onClick = {
-                scope.launch { drawerState.close() }
-                authViewModel.signOut() // Call the signlogout()
-                navController.navigate("login") {
-                    popUpTo(navController.graph.id) { inclusive = true }
-                }
-            },
+            onClick = onLogoutClick,
             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
         )
     }
 }
 
-// Helper function to handle upload errors
+/**
+ * Handles an error that occurred during a profile picture upload.
+ *
+ * @param exception The exception that occurred.
+ * @param snackbarHostState The snackbar host state.
+ */
 private fun handleUploadError(exception: Throwable?, snackbarHostState: SnackbarHostState) {
-    // Note: LocalContext.current cannot be used directly here as it's not a Composable.
-    // You might need to pass context or a CoroutineScope if you intend to show Snackbars from here.
     exception?.let {
         val msg = it.message ?: "Unknown error"
         val permissionIssue = msg.contains("permission", ignoreCase = true)
@@ -261,18 +305,33 @@ private fun handleUploadError(exception: Throwable?, snackbarHostState: Snackbar
             "Failed to update profile picture: $msg"
         }
         Log.e("AppDrawer", errorMessage, it)
-        // To show a Snackbar, you would need a CoroutineScope from the calling composable.
-        // Example: scope.launch { snackbarHostState.showSnackbar(errorMessage) }
     }
 }
 
-// Dummy placeholder for a gallery icon if you don't have one.
-// You should replace this with your actual drawable resource.
+/**
+ * A composable that displays a placeholder for a gallery icon.
+ */
 @Composable
 fun IconGalleryPlaceholder() {
     Icon(
-        painter = painterResource(id = R.drawable.ic_launcher_foreground), // Replace with your actual gallery icon
+        painter = painterResource(id = R.drawable.ic_launcher_foreground),
         contentDescription = "Gallery Icon",
-        modifier = Modifier.size(24.dp) // Adjust size as needed
+        modifier = Modifier.size(24.dp)
     )
+}
+
+@Preview(showBackground = true, name = "App Drawer Preview")
+@Composable
+fun AppDrawerContentPreview() {
+    MaterialTheme {
+        AppDrawerContent(
+            user = DrawerData("John Doe", null),
+            profilePictureUrl = null,
+            snackbarHostState = remember { SnackbarHostState() },
+            onTakePhotoClick = {},
+            onChooseFromGalleryClick = {},
+            onSettingsClick = {},
+            onLogoutClick = {}
+        )
+    }
 }

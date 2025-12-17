@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.google.android.gms.location.LocationServices
@@ -36,6 +37,12 @@ import uk.ac.tees.mad.payclock.core.Graph
 import uk.ac.tees.mad.payclock.features.breaks.BreakViewModel
 import uk.ac.tees.mad.payclock.features.jobs.JobViewModel
 
+/**
+ * A route composable for the time log control screen.
+ * This composable connects the [JobViewModel], [TimeLogViewModel], and [BreakViewModel] to the [TimeLogControlScreen].
+ *
+ * @param navController The navigation controller.
+ */
 @Composable
 fun TimeLogControlScreenRoute(
     navController: NavHostController,
@@ -164,6 +171,17 @@ fun TimeLogControlScreenRoute(
 }
 
 
+/**
+ * A composable function that displays the time log control screen.
+ *
+ * @param jobName The name of the job.
+ * @param startTime The start time of the shift.
+ * @param isBreakActive Whether a break is currently active.
+ * @param onStartClick A callback that is invoked when the user clicks the "Start" button.
+ * @param onStopClick A callback that is invoked when the user clicks the "Stop" button.
+ * @param onStartBreakClick A callback that is invoked when the user clicks the "Start Unpaid Break" button.
+ * @param onEndBreakClick A callback that is invoked when the user clicks the "End Break" button.
+ */
 @Composable
 fun TimeLogControlScreen(
     jobName: String,
@@ -237,9 +255,57 @@ fun TimeLogControlScreen(
     }
 }
 
+/**
+ * Formats a [Duration] object into a string with the format HH:mm:ss.
+ *
+ * @param duration The [Duration] to format.
+ * @return A string representation of the duration in HH:mm:ss format.
+ */
 private fun formatDuration(duration: Duration): String {
     val hours = duration.toHours()
     val minutes = duration.toMinutes() % 60
     val seconds = duration.seconds % 60
     return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+@Preview(showBackground = true, name = "Shift Not Started")
+@Composable
+fun TimeLogControlScreenPreview_NotStarted() {
+    TimeLogControlScreen(
+        jobName = "Sample Job",
+        startTime = null,
+        isBreakActive = false,
+        onStartClick = {},
+        onStopClick = {},
+        onStartBreakClick = {},
+        onEndBreakClick = {}
+    )
+}
+
+@Preview(showBackground = true, name = "Shift In Progress")
+@Composable
+fun TimeLogControlScreenPreview_InProgress() {
+    TimeLogControlScreen(
+        jobName = "Sample Job",
+        startTime = Date(System.currentTimeMillis() - 3600 * 1000), // 1 hour ago
+        isBreakActive = false,
+        onStartClick = {},
+        onStopClick = {},
+        onStartBreakClick = {},
+        onEndBreakClick = {}
+    )
+}
+
+@Preview(showBackground = true, name = "On Break")
+@Composable
+fun TimeLogControlScreenPreview_OnBreak() {
+    TimeLogControlScreen(
+        jobName = "Sample Job",
+        startTime = Date(System.currentTimeMillis() - 3600 * 2 * 1000), // 2 hours ago
+        isBreakActive = true,
+        onStartClick = {},
+        onStopClick = {},
+        onStartBreakClick = {},
+        onEndBreakClick = {}
+    )
 }

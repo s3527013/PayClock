@@ -36,6 +36,12 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
 
+/**
+ * A composable function that displays the login screen.
+ *
+ * @param navController The navigation controller.
+ * @param authViewModel The view model for authentication.
+ */
 @Composable
 fun LoginScreen(
     navController: NavHostController,
@@ -152,6 +158,9 @@ fun LoginScreen(
     }
 }
 
+/**
+ * A preview for the [LoginScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {

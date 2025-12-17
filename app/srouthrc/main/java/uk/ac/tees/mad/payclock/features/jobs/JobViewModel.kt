@@ -11,20 +11,16 @@ import uk.ac.tees.mad.payclock.features.jobs.data.Job
 import uk.ac.tees.mad.payclock.features.jobs.data.JobRepository
 
 /**
- * ViewModel for managing job-related data and operations.
+ * A ViewModel for the job screen.
  *
- * This ViewModel interacts with the [JobRepository] to provide a list of jobs,
- * manage an active job, and perform CRUD (Create, Read, Update, Delete) operations on jobs.
- *
- * @param jobRepository The repository for accessing job data.
+ * @param jobRepository The repository for jobs.
  */
 class JobViewModel(
     private val jobRepository: JobRepository
 ) : ViewModel() {
 
     /**
-     * A [StateFlow] emitting the list of all jobs for the current user.
-     * The data is fetched from the [jobRepository] and cached in the ViewModel.
+     * A StateFlow that emits the list of all jobs.
      */
     val jobs: StateFlow<List<Job>> = jobRepository.jobs.stateIn(
         scope = viewModelScope,
@@ -32,18 +28,16 @@ class JobViewModel(
         initialValue = emptyList()
     )
     private val _activeJob = MutableStateFlow<Job?>(null)
-
     /**
-     * A [StateFlow] representing the currently selected or active job.
-     * This is useful for screens that need to operate on a specific job, like the time log control screen.
+     * A StateFlow that emits the currently active job.
      */
     val activeJob: StateFlow<Job?> = _activeJob
 
     /**
-     * Adds a new job to the repository.
+     * Adds a new job.
      *
-     * @param name The name of the new job.
-     * @param hourlyRate The hourly pay rate for the new job.
+     * @param name The name of the job.
+     * @param hourlyRate The hourly rate of the job.
      */
     fun addJob(name: String, hourlyRate: Double) {
         viewModelScope.launch {
@@ -52,9 +46,9 @@ class JobViewModel(
     }
 
     /**
-     * Updates an existing job in the repository.
+     * Updates a job.
      *
-     * @param job The [Job] object with updated information.
+     * @param job The job to update.
      */
     fun updateJob(job: Job) {
         viewModelScope.launch {
@@ -63,9 +57,9 @@ class JobViewModel(
     }
 
     /**
-     * Removes a job from the repository.
+     * Removes a job.
      *
-     * @param job The [Job] to be removed.
+     * @param job The job to remove.
      */
     fun removeJob(job: Job) {
         viewModelScope.launch {
@@ -74,17 +68,16 @@ class JobViewModel(
     }
 
     /**
-     * Sets a job as the currently active one in the ViewModel's state.
+     * Sets the active job.
      *
-     * @param job The [Job] to be set as active.
+     * @param job The job to set as active.
      */
     fun setActiveJob(job: Job) {
         _activeJob.value = job
     }
 
     /**
-     * Resets the active job, setting its value to null.
-     * This is typically called when the context of an active job is no longer needed.
+     * Resets the active job.
      */
     fun resetActiveJob() {
         _activeJob.value = null

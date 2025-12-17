@@ -16,11 +16,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Define Theme choices
+/**
+ * An enum that represents the different theme choices available in the application.
+ */
 enum class ThemeChoice(val label: String) {
+    /**
+     * The light theme.
+     */
     LIGHT("Light"),
+    /**
+     * The dark theme.
+     */
     DARK("Dark"),
+    /**
+     * The system theme.
+     */
     SYSTEM("System"),
+    /**
+     * The colorful theme.
+     */
     COLORFUL("Colorful")
 }
 
@@ -228,8 +242,18 @@ private val ClassicDarkColorScheme = darkColorScheme(
     onErrorContainer = Color(0xFFFFCDD2),
 )
 
-// Theme Manager
+/**
+ * A singleton object that manages the application's theme.
+ */
 object ThemeManager {
+    /**
+     * Returns the color scheme for the application.
+     *
+     * @param themeChoice The theme choice.
+     * @param useDynamicColor Whether to use dynamic color.
+     * @param isDarkTheme Whether the system is in dark theme.
+     * @return The color scheme for the application.
+     */
     @Composable
     fun getColorScheme(
         themeChoice: ThemeChoice = ThemeChoice.SYSTEM,
@@ -276,6 +300,13 @@ object ThemeManager {
     }
 }
 
+/**
+ * The theme for the PayClock application.
+ *
+ * @param themeChoice The theme choice.
+ * @param useDynamicColor Whether to use dynamic color.
+ * @param content The content of the application.
+ */
 @Composable
 fun PayClockTheme(
     themeChoice: ThemeChoice = ThemeChoice.SYSTEM,

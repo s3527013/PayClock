@@ -39,6 +39,12 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
 
+/**
+ * A composable function that displays the forgot password screen.
+ *
+ * @param navController The navigation controller.
+ * @param authViewModel The view model for authentication.
+ */
 @Composable
 fun ForgotPasswordScreen(
     navController: NavHostController,
@@ -184,6 +190,9 @@ fun ForgotPasswordScreen(
     }
 }
 
+/**
+ * A preview for the [ForgotPasswordScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ForgotPasswordScreenPreview() {

@@ -36,6 +36,12 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.payclock.ui.theme.PayClockTheme
 
+/**
+ * A composable function that displays the sign up screen.
+ *
+ * @param navController The navigation controller.
+ * @param authViewModel The view model for authentication.
+ */
 @Composable
 fun SignUpScreen(
     navController: NavHostController,
@@ -208,6 +214,9 @@ fun SignUpScreen(
     }
 }
 
+/**
+ * A preview for the [SignUpScreen] composable.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SignUpScreenPreview() {
